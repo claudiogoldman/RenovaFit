@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import type { RenewalItem, RenewalStatus } from '@/lib/types';
+import type { ContactHistoryItem, RenewalItem, RenewalStatus } from '@/lib/types';
 import { usePersistedState } from '@/hooks/use-persisted-state';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
@@ -17,6 +17,7 @@ const PLAN_OPTIONS = ['Anual', 'Semestral', 'Trimestral', 'Mensal'];
 
 const INITIAL_FORM: Omit<RenewalItem, 'id'> = {
   name: '',
+  phone: '',
   plan: 'Anual',
   status: 'ativo',
   renewalDate: '',
@@ -47,6 +48,28 @@ function statusBadgeClass(status: RenewalStatus): string {
   return 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
 }
 
+function formatSentAt(value: string): string {
+  if (!value) {
+    return '-';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString('pt-BR');
+}
+
+function buildWhatsAppMessage(item: RenewalItem): string {
+  return [
+    `Oi ${item.name}, tudo bem?`,
+    '',
+    `Passando para te lembrar da renovacao do seu plano ${item.plan}.`,
+    'Quer que eu te envie agora as opcoes e valores atualizados?',
+  ].join('\n');
+}
+
 export function RetencaoRenewalList() {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -58,8 +81,11 @@ export function RetencaoRenewalList() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
 
   const [items, setItems] = useState<RenewalItem[]>([]);
+  const [history, setHistory] = useState<ContactHistoryItem[]>([]);
   const [form, setForm] = useState(INITIAL_FORM);
   const [loadingList, setLoadingList] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [sendingWhatsAppById, setSendingWhatsAppById] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = usePersistedState<string>('renovafit:retencao:lista:search', '');
   const [statusFilter, setStatusFilter] = usePersistedState<string>('renovafit:retencao:lista:status', 'todos');
@@ -154,13 +180,35 @@ export function RetencaoRenewalList() {
     }
   };
 
+  const loadHistory = async () => {
+    setLoadingHistory(true);
+    setError(null);
+
+    try {
+      const response = await fetchWithAuth('/api/renewals/contact-history?limit=12');
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.details || result.error || 'Erro ao carregar historico');
+      }
+
+      setHistory(result.data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   useEffect(() => {
     if (!session) {
       setItems([]);
+      setHistory([]);
       return;
     }
 
     void loadItems();
+    void loadHistory();
   }, [session]);
 
   const plans = useMemo(() => {
@@ -209,12 +257,8 @@ export function RetencaoRenewalList() {
     }
 
     try {
-      const response = await fetch('/api/renewals', {
+      const response = await fetchWithAuth('/api/renewals', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token || ''}`,
-        },
         body: JSON.stringify(form),
       });
 
@@ -232,11 +276,8 @@ export function RetencaoRenewalList() {
 
   const handleRemove = async (id: string) => {
     try {
-      const response = await fetch(`/api/renewals/${id}`, {
+      const response = await fetchWithAuth(`/api/renewals/${id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${session?.access_token || ''}`,
-        },
       });
       const result = await response.json();
 
@@ -255,12 +296,8 @@ export function RetencaoRenewalList() {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
 
     try {
-      const response = await fetch(`/api/renewals/${id}`, {
+      const response = await fetchWithAuth(`/api/renewals/${id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token || ''}`,
-        },
         body: JSON.stringify({ status }),
       });
 
@@ -271,6 +308,43 @@ export function RetencaoRenewalList() {
     } catch (err) {
       setItems(previous);
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
+  };
+
+  const handleSendWhatsApp = async (item: RenewalItem) => {
+    if (!item.phone) {
+      setError(`Informe um telefone para ${item.name} antes de enviar.`);
+      return;
+    }
+
+    setSendingWhatsAppById((prev) => ({ ...prev, [item.id]: true }));
+    setError(null);
+
+    try {
+      const response = await fetchWithAuth(`/api/renewals/${item.id}/contact`, {
+        method: 'POST',
+        body: JSON.stringify({
+          phone: item.phone,
+          message: buildWhatsAppMessage(item),
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.details || result.error || 'Erro ao enviar WhatsApp');
+      }
+
+      setItems((prev) =>
+        prev.map((current) =>
+          current.id === item.id ? { ...current, lastContact: String(result.data?.sentAt || current.lastContact) } : current,
+        ),
+      );
+      void loadHistory();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+      void loadHistory();
+    } finally {
+      setSendingWhatsAppById((prev) => ({ ...prev, [item.id]: false }));
     }
   };
 
@@ -420,11 +494,17 @@ export function RetencaoRenewalList() {
 
       <div className="rounded-xl border border-emerald-400/20 bg-slate-900/60 p-6">
         <h3 className="text-xl font-semibold text-emerald-300">Adicionar aluno</h3>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-5">
           <input
             value={form.name}
             onChange={(e) => handleFormChange('name', e.target.value)}
             placeholder="Nome"
+            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+          />
+          <input
+            value={form.phone}
+            onChange={(e) => handleFormChange('phone', e.target.value)}
+            placeholder="Telefone (DDI+DDD+numero)"
             className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
           />
           <select
@@ -471,7 +551,7 @@ export function RetencaoRenewalList() {
             value={form.notes}
             onChange={(e) => handleFormChange('notes', e.target.value)}
             placeholder="Notas"
-            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white lg:col-span-2"
+            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white lg:col-span-3"
           />
         </div>
         <button
@@ -525,6 +605,7 @@ export function RetencaoRenewalList() {
           <thead className="bg-slate-900/80">
             <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
               <th className="px-4 py-3">Aluno</th>
+              <th className="px-4 py-3">Telefone</th>
               <th className="px-4 py-3">Plano</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Renovacao</th>
@@ -541,6 +622,7 @@ export function RetencaoRenewalList() {
                     <p className="font-semibold text-white">{item.name}</p>
                     {item.notes && <p className="text-xs text-slate-400">{item.notes}</p>}
                   </td>
+                  <td className="px-4 py-3 text-xs text-slate-300">{item.phone || '-'}</td>
                   <td className="px-4 py-3">{item.plan}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex rounded-full border px-2 py-1 text-xs ${statusBadgeClass(item.status)}`}>
@@ -550,6 +632,7 @@ export function RetencaoRenewalList() {
                   <td className="px-4 py-3">
                     <p>{item.renewalDate || '-'}</p>
                     {days !== null && <p className="text-xs text-slate-400">D{days >= 0 ? `-${days}` : `+${Math.abs(days)}`}</p>}
+                    <p className="mt-1 text-xs text-slate-500">Ultimo: {formatSentAt(item.lastContact)}</p>
                   </td>
                   <td className="px-4 py-3">{item.owner || '-'}</td>
                   <td className="px-4 py-3">
@@ -566,6 +649,13 @@ export function RetencaoRenewalList() {
                         ))}
                       </select>
                       <button
+                        onClick={() => void handleSendWhatsApp(item)}
+                        disabled={sendingWhatsAppById[item.id] || !item.phone}
+                        className="rounded border border-emerald-500/30 px-2 py-1 text-xs text-emerald-300 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {sendingWhatsAppById[item.id] ? 'Enviando...' : 'WhatsApp'}
+                      </button>
+                      <button
                         onClick={() => void handleRemove(item.id)}
                         className="rounded border border-rose-500/30 px-2 py-1 text-xs text-rose-300 hover:bg-rose-500/10"
                       >
@@ -580,6 +670,41 @@ export function RetencaoRenewalList() {
         </table>
         {sortedUrgent.length === 0 && (
           <div className="p-6 text-center text-slate-400">Nenhum aluno encontrado com os filtros atuais.</div>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-5">
+        <h3 className="text-lg font-semibold text-white">Historico de Contatos</h3>
+        {loadingHistory && <p className="mt-2 text-sm text-slate-400">Carregando historico...</p>}
+        {!loadingHistory && history.length === 0 && (
+          <p className="mt-2 text-sm text-slate-400">Nenhum contato registrado ainda.</p>
+        )}
+        {!loadingHistory && history.length > 0 && (
+          <ul className="mt-3 space-y-2">
+            {history.map((entry) => (
+              <li key={entry.id} className="rounded-lg border border-slate-700 bg-slate-950/70 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-white">
+                    <span className="font-semibold">{entry.studentName}</span> · {entry.phone}
+                  </p>
+                  <span
+                    className={`rounded-full border px-2 py-1 text-[11px] uppercase tracking-wide ${
+                      entry.status === 'enviado'
+                        ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
+                        : 'border-rose-500/40 bg-rose-500/20 text-rose-300'
+                    }`}
+                  >
+                    {entry.status}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  {formatSentAt(entry.sentAt)} · por {entry.owner || 'Atendente'}
+                </p>
+                <p className="mt-2 line-clamp-2 text-xs text-slate-300">{entry.message}</p>
+                {entry.errorMessage && <p className="mt-2 text-xs text-rose-300">Erro: {entry.errorMessage}</p>}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
         </>

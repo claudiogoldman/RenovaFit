@@ -47,10 +47,27 @@ export type RenewalStatus = 'ativo' | 'sumido' | 'critico' | 'renovado';
 export type RenewalItem = {
   id: string;
   name: string;
+  phone: string;
   plan: string;
   status: RenewalStatus;
   renewalDate: string;
   lastContact: string;
   owner: string;
   notes: string;
+};
+
+export type ContactChannel = 'whatsapp';
+
+export type ContactHistoryItem = {
+  id: string;
+  renewalItemId: string;
+  studentName: string;
+  channel: ContactChannel;
+  phone: string;
+  message: string;
+  status: 'enviado' | 'erro';
+  sentAt: string;
+  providerMessageId: string | null;
+  errorMessage: string | null;
+  owner: string;
 };
