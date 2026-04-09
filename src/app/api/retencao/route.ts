@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateContent } from '@/lib/gemini';
 import { mapGeminiError } from '@/lib/gemini-error';
+import { buildRetencaoFallback } from '@/lib/local-fallback';
 import {
   buildRetencaoPrompt,
   buildObjectionRetencaoPrompt,
@@ -8,13 +9,25 @@ import {
 import type { StudentProfile, AIResponse } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
+  let action: 'strategy' | 'objection' = 'strategy';
+  let student: StudentProfile = {
+    name: '',
+    age: '',
+    gender: '',
+    goal: '',
+    hasChildren: '',
+    routine: '',
+    notes: '',
+  };
+  let objection: string | undefined;
+
   try {
     const body = await request.json();
-    const { action, student, objection } = body as {
+    ({ action, student, objection } = body as {
       action: 'strategy' | 'objection';
       student: StudentProfile;
       objection?: string;
-    };
+    });
 
     let prompt = '';
     let systemInstruction = 'Você é um especialista em retenção de alunos de academia.';
@@ -48,6 +61,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Erro em /api/retencao:', error);
     const mapped = mapGeminiError(error, 'Erro ao gerar estratégia');
+
+    if (mapped.status === 429 || mapped.status === 503) {
+      const fallback = buildRetencaoFallback(action, student, objection);
+      return NextResponse.json({ success: true, data: fallback, warning: mapped }, { status: 200 });
+    }
+
     return NextResponse.json(
       {
         error: mapped.error,

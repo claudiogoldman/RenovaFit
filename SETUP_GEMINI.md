@@ -49,6 +49,20 @@ npm run dev
 # Acessar http://localhost:3000
 ```
 
+### OpenRouter (Opcional, recomendado como fallback)
+
+Se a cota do Gemini acabar ou o modelo ficar indisponivel, o backend pode usar OpenRouter automaticamente.
+
+```bash
+# No .env.local
+OPENROUTER_API_KEY=sua-chave-openrouter
+OPENROUTER_MODEL=openai/gpt-4o-mini
+OPENROUTER_HTTP_REFERER=https://renovafit.vercel.app
+OPENROUTER_APP_NAME=RenovaFit
+```
+
+No Vercel, adicione as mesmas variaveis em Environment Variables.
+
 ### 4. Testar os Módulos
 
 **Conversão** (`/conversao`)

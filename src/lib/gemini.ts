@@ -15,10 +15,56 @@ function getGeminiClient(): GoogleGenerativeAI {
 
 export const MODEL_NAME = 'gemini-2.5-flash';
 export const FALLBACK_MODEL_NAME = 'gemini-2.0-flash';
+export const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
 
 function shouldTryFallback(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /503|429|high demand|service unavailable|overloaded|not found/i.test(message);
+}
+
+async function generateWithOpenRouter(prompt: string, systemInstructions?: string): Promise<string> {
+  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+  if (!openRouterApiKey) {
+    throw new Error('OPENROUTER_API_KEY environment variable is not set');
+  }
+
+  const messages = [] as Array<{ role: 'system' | 'user'; content: string }>;
+  if (systemInstructions) {
+    messages.push({ role: 'system', content: systemInstructions });
+  }
+  messages.push({ role: 'user', content: prompt });
+
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${openRouterApiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': process.env.OPENROUTER_HTTP_REFERER || 'https://renovafit.vercel.app',
+      'X-Title': process.env.OPENROUTER_APP_NAME || 'RenovaFit',
+    },
+    body: JSON.stringify({
+      model: OPENROUTER_MODEL,
+      messages,
+      temperature: 0.7,
+      max_tokens: 2048,
+    }),
+  });
+
+  const payload = (await response.json()) as {
+    error?: { message?: string };
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+
+  if (!response.ok) {
+    throw new Error(payload.error?.message || `OpenRouter request failed with status ${response.status}`);
+  }
+
+  const content = payload.choices?.[0]?.message?.content?.trim();
+  if (!content) {
+    throw new Error('OpenRouter returned an empty response');
+  }
+
+  return content;
 }
 
 export async function generateContent(prompt: string, systemInstructions?: string) {
@@ -59,6 +105,16 @@ export async function generateContent(prompt: string, systemInstructions?: strin
     throw lastError;
   } catch (error) {
     console.error('Erro ao chamar Gemini:', error);
+
+    if (shouldTryFallback(error) && process.env.OPENROUTER_API_KEY) {
+      try {
+        return await generateWithOpenRouter(prompt, systemInstructions);
+      } catch (openRouterError) {
+        console.error('Erro ao chamar OpenRouter:', openRouterError);
+        throw openRouterError;
+      }
+    }
+
     throw error;
   }
 }

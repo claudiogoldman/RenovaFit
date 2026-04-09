@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateContent } from '@/lib/gemini';
 import { mapGeminiError } from '@/lib/gemini-error';
+import { buildConversaoFallback } from '@/lib/local-fallback';
 import {
   buildConversaoPrompt,
   buildMediaPrompt,
@@ -9,13 +10,26 @@ import {
 import type { LeadProfile, AIResponse } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
+  let action: 'initial' | 'messages' | 'objection' = 'initial';
+  let lead: LeadProfile = {
+    name: '',
+    age: '',
+    gender: '',
+    goal: '',
+    availability: '',
+    currentActivity: '',
+    mainObjection: '',
+    notes: '',
+  };
+  let objection: string | undefined;
+
   try {
     const body = await request.json();
-    const { action, lead, objection } = body as {
+    ({ action, lead, objection } = body as {
       action: 'initial' | 'messages' | 'objection';
       lead: LeadProfile;
       objection?: string;
-    };
+    });
 
     let prompt = '';
     let systemInstruction = 'Você está ajudando um especialista em vendas de academia a converter leads em alunos.';
@@ -53,6 +67,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Erro em /api/conversao:', error);
     const mapped = mapGeminiError(error, 'Erro ao gerar conteúdo');
+
+    if (mapped.status === 429 || mapped.status === 503) {
+      const fallback = buildConversaoFallback(action, lead, objection);
+      return NextResponse.json({ success: true, data: fallback, warning: mapped }, { status: 200 });
+    }
+
     return NextResponse.json(
       {
         error: mapped.error,

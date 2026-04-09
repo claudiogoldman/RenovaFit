@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateContent } from '@/lib/gemini';
 import { mapGeminiError } from '@/lib/gemini-error';
+import { buildReativacaoFallback } from '@/lib/local-fallback';
 import {
   buildReativacaoPrompt,
   buildObjectionReativacaoPrompt,
@@ -8,13 +9,26 @@ import {
 import type { ExStudentProfile, AIResponse } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
+  let action: 'strategy' | 'objection' = 'strategy';
+  let exStudent: ExStudentProfile = {
+    name: '',
+    age: '',
+    cancelledWhen: '',
+    cancelReason: '',
+    lastPlan: '',
+    tenure: '',
+    mainObjection: '',
+    notes: '',
+  };
+  let objection: string | undefined;
+
   try {
     const body = await request.json();
-    const { action, exStudent, objection } = body as {
+    ({ action, exStudent, objection } = body as {
       action: 'strategy' | 'objection';
       exStudent: ExStudentProfile;
       objection?: string;
-    };
+    });
 
     let prompt = '';
     let systemInstruction = 'Você é um especialista em reativação de ex-alunos.';
@@ -48,6 +62,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Erro em /api/reativacao:', error);
     const mapped = mapGeminiError(error, 'Erro ao gerar estratégia de reativação');
+
+    if (mapped.status === 429 || mapped.status === 503) {
+      const fallback = buildReativacaoFallback(action, exStudent, objection);
+      return NextResponse.json({ success: true, data: fallback, warning: mapped }, { status: 200 });
+    }
+
     return NextResponse.json(
       {
         error: mapped.error,
