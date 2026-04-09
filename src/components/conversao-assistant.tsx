@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { LeadProfile } from '@/lib/types';
 import { AIFormattedResponse } from '@/components/ai-formatted-response';
 import { usePersistedState } from '@/hooks/use-persisted-state';
+import { WhatsAppSendPanel } from '@/components/whatsapp-send-panel';
 
 export function ConversaoAssistant() {
   const genderOptions = ['Masculino', 'Feminino', 'Nao-binario', 'Prefere nao informar'];
@@ -168,6 +169,12 @@ export function ConversaoAssistant() {
             >
               📋 Copiar Resposta
             </button>
+
+            <WhatsAppSendPanel
+              message={output}
+              storageKey="renovafit:conversao"
+              accentClassName="text-cyan-300"
+            />
           </div>
         )}
 

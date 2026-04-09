@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { ExStudentProfile } from '@/lib/types';
 import { AIFormattedResponse } from '@/components/ai-formatted-response';
 import { usePersistedState } from '@/hooks/use-persisted-state';
+import { WhatsAppSendPanel } from '@/components/whatsapp-send-panel';
 
 export function ReativacaoAssistant() {
   const [exStudent, setExStudent] = usePersistedState<ExStudentProfile>('renovafit:reativacao:exStudent', {
@@ -127,6 +128,12 @@ export function ReativacaoAssistant() {
             >
               📋 Copiar Estratégia
             </button>
+
+            <WhatsAppSendPanel
+              message={output}
+              storageKey="renovafit:reativacao"
+              accentClassName="text-purple-300"
+            />
           </div>
         )}
 

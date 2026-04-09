@@ -5,6 +5,7 @@ import type { StudentProfile } from '@/lib/types';
 import type { RetencaoStrategyStyle } from '@/lib/prompts-retencao';
 import { AIFormattedResponse } from '@/components/ai-formatted-response';
 import { usePersistedState } from '@/hooks/use-persisted-state';
+import { WhatsAppSendPanel } from '@/components/whatsapp-send-panel';
 
 export function RetencaoAssistant() {
   const genderOptions = ['Masculino', 'Feminino', 'Nao-binario', 'Prefere nao informar'];
@@ -187,6 +188,12 @@ export function RetencaoAssistant() {
             >
               📋 Copiar Estratégia
             </button>
+
+            <WhatsAppSendPanel
+              message={output}
+              storageKey="renovafit:retencao"
+              accentClassName="text-emerald-300"
+            />
           </div>
         )}
 
