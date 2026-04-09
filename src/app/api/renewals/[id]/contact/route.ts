@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getAuthenticatedUser } from '@/lib/supabase-auth';
-import { sendWhatsAppTextMessage } from '@/lib/whatsapp';
+import { registrarHistoricoContato } from '@/lib/contact-history';
+import { isValidPhone, normalizePhone, sendWhatsAppTextMessage } from '@/lib/whatsapp';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -10,13 +11,10 @@ type RouteContext = {
 type RenewalRow = {
   id: string;
   name: string;
-  phone: string | null;
+  telefone: string | null;
   owner: string | null;
+  last_contact: string | null;
 };
-
-function normalizePhone(rawPhone: string): string {
-  return rawPhone.replace(/\D/g, '');
-}
 
 function buildDefaultMessage(name: string): string {
   return `Oi ${name}, tudo bem?\n\nPassei para te lembrar da renovacao do seu plano na academia. Quer que eu te mande as opcoes e valores atualizados?`;
@@ -32,15 +30,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const body = (await request.json()) as {
-      phone?: string;
+      telefone?: string;
       message?: string;
+      tipoContato?: 'primeiro_contato' | 'followup' | 'resposta' | 'observacao';
     };
 
     const supabase = createSupabaseServerClient();
 
     const { data: renewalData, error: renewalError } = await supabase
       .from('renewal_items')
-      .select('id,name,phone,owner')
+      .select('id,name,telefone,owner,last_contact')
       .eq('id', id)
       .eq('owner_id', user.id)
       .single();
@@ -50,11 +49,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const renewal = renewalData as RenewalRow;
-    const selectedPhone = normalizePhone((body.phone || renewal.phone || '').trim());
+    const telefone = normalizePhone((body.telefone || renewal.telefone || '').trim());
     const message = (body.message || buildDefaultMessage(renewal.name)).trim();
+    const tipoContato = body.tipoContato || (renewal.last_contact ? 'followup' : 'primeiro_contato');
 
-    if (!selectedPhone) {
-      return NextResponse.json({ error: 'Telefone nao informado para este aluno' }, { status: 400 });
+    if (!isValidPhone(telefone)) {
+      return NextResponse.json({ error: 'Telefone invalido para este aluno' }, { status: 400 });
     }
 
     if (!message) {
@@ -62,26 +62,34 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const sentAtIso = new Date().toISOString();
+    const ownerName =
+      renewal.owner ||
+      (user.user_metadata?.full_name as string | undefined) ||
+      user.email ||
+      'Atendente';
 
     try {
       const provider = await sendWhatsAppTextMessage({
-        to: selectedPhone,
+        to: telefone,
         body: message,
       });
 
-      await supabase.from('renewal_items').update({ last_contact: sentAtIso }).eq('id', id).eq('owner_id', user.id);
+      await supabase
+        .from('renewal_items')
+        .update({ last_contact: sentAtIso, telefone })
+        .eq('id', id)
+        .eq('owner_id', user.id);
 
-      await supabase.from('contact_history').insert({
-        owner_id: user.id,
-        renewal_item_id: id,
-        student_name: renewal.name,
-        channel: 'whatsapp',
-        phone: selectedPhone,
-        message,
-        status: 'enviado',
-        sent_at: sentAtIso,
-        provider_message_id: provider.messageId,
-        owner: renewal.owner || user.email || 'Atendente',
+      await registrarHistoricoContato(supabase, {
+        ownerId: user.id,
+        renovacaoId: id,
+        alunoNome: renewal.name,
+        canal: 'whatsapp',
+        tipoContato,
+        telefone,
+        mensagem: message,
+        statusEnvio: 'enviado',
+        owner: ownerName,
       });
 
       return NextResponse.json({
@@ -94,17 +102,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     } catch (sendError) {
       const errorMessage = sendError instanceof Error ? sendError.message : 'Erro no envio';
 
-      await supabase.from('contact_history').insert({
-        owner_id: user.id,
-        renewal_item_id: id,
-        student_name: renewal.name,
-        channel: 'whatsapp',
-        phone: selectedPhone,
-        message,
-        status: 'erro',
-        sent_at: sentAtIso,
-        error_message: errorMessage,
-        owner: renewal.owner || user.email || 'Atendente',
+      await registrarHistoricoContato(supabase, {
+        ownerId: user.id,
+        renovacaoId: id,
+        alunoNome: renewal.name,
+        canal: 'whatsapp',
+        tipoContato,
+        telefone,
+        mensagem: message,
+        statusEnvio: 'erro',
+        erroDetalhe: errorMessage,
+        owner: ownerName,
       });
 
       return NextResponse.json(

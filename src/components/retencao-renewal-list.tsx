@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import type { ContactHistoryItem, RenewalItem, RenewalStatus } from '@/lib/types';
+import type { HistoricoContatoItem, RenewalItem, RenewalStatus } from '@/lib/types';
 import { usePersistedState } from '@/hooks/use-persisted-state';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { isValidPhone, normalizePhone } from '@/lib/whatsapp';
 
 const STATUS_OPTIONS: Array<{ value: RenewalStatus; label: string }> = [
   { value: 'ativo', label: 'Ativo' },
@@ -17,7 +18,7 @@ const PLAN_OPTIONS = ['Anual', 'Semestral', 'Trimestral', 'Mensal'];
 
 const INITIAL_FORM: Omit<RenewalItem, 'id'> = {
   name: '',
-  phone: '',
+  telefone: '',
   plan: 'Anual',
   status: 'ativo',
   renewalDate: '',
@@ -81,7 +82,9 @@ export function RetencaoRenewalList() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
 
   const [items, setItems] = useState<RenewalItem[]>([]);
-  const [history, setHistory] = useState<ContactHistoryItem[]>([]);
+  const [history, setHistory] = useState<HistoricoContatoItem[]>([]);
+  const [telefoneDraftById, setTelefoneDraftById] = useState<Record<string, string>>({});
+  const [updatingTelefoneById, setUpdatingTelefoneById] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState(INITIAL_FORM);
   const [loadingList, setLoadingList] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -172,7 +175,14 @@ export function RetencaoRenewalList() {
         throw new Error(result.details || result.error || 'Erro ao carregar lista');
       }
 
-      setItems(result.data || []);
+      const fetchedItems = (result.data || []) as RenewalItem[];
+      setItems(fetchedItems);
+      setTelefoneDraftById(
+        fetchedItems.reduce<Record<string, string>>((acc, item) => {
+          acc[item.id] = item.telefone || '';
+          return acc;
+        }, {}),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
@@ -267,7 +277,9 @@ export function RetencaoRenewalList() {
         throw new Error(result.details || result.error || 'Erro ao criar item');
       }
 
-      setItems((prev) => [result.data as RenewalItem, ...prev]);
+      const createdItem = result.data as RenewalItem;
+      setItems((prev) => [createdItem, ...prev]);
+      setTelefoneDraftById((prev) => ({ ...prev, [createdItem.id]: createdItem.telefone || '' }));
       setForm(INITIAL_FORM);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
@@ -312,8 +324,9 @@ export function RetencaoRenewalList() {
   };
 
   const handleSendWhatsApp = async (item: RenewalItem) => {
-    if (!item.phone) {
-      setError(`Informe um telefone para ${item.name} antes de enviar.`);
+    const telefone = normalizePhone(telefoneDraftById[item.id] || item.telefone || '');
+    if (!isValidPhone(telefone)) {
+      setError(`Informe um telefone valido para ${item.name} antes de enviar.`);
       return;
     }
 
@@ -324,7 +337,7 @@ export function RetencaoRenewalList() {
       const response = await fetchWithAuth(`/api/renewals/${item.id}/contact`, {
         method: 'POST',
         body: JSON.stringify({
-          phone: item.phone,
+          telefone,
           message: buildWhatsAppMessage(item),
         }),
       });
@@ -502,8 +515,8 @@ export function RetencaoRenewalList() {
             className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
           />
           <input
-            value={form.phone}
-            onChange={(e) => handleFormChange('phone', e.target.value)}
+            value={form.telefone}
+            onChange={(e) => handleFormChange('telefone', e.target.value)}
             placeholder="Telefone (DDI+DDD+numero)"
             className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
           />
@@ -622,7 +635,50 @@ export function RetencaoRenewalList() {
                     <p className="font-semibold text-white">{item.name}</p>
                     {item.notes && <p className="text-xs text-slate-400">{item.notes}</p>}
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-300">{item.phone || '-'}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={telefoneDraftById[item.id] ?? item.telefone ?? ''}
+                        onChange={(e) =>
+                          setTelefoneDraftById((prev) => ({
+                            ...prev,
+                            [item.id]: e.target.value,
+                          }))
+                        }
+                        className="w-40 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+                        placeholder="DDI+DDD+numero"
+                      />
+                      <button
+                        onClick={async () => {
+                          const telefoneNormalizado = normalizePhone(telefoneDraftById[item.id] || '');
+                          setUpdatingTelefoneById((prev) => ({ ...prev, [item.id]: true }));
+                          try {
+                            const response = await fetchWithAuth(`/api/renewals/${item.id}`, {
+                              method: 'PATCH',
+                              body: JSON.stringify({ telefone: telefoneNormalizado }),
+                            });
+                            const result = await response.json();
+                            if (!response.ok || !result.success) {
+                              throw new Error(result.details || result.error || 'Erro ao salvar telefone');
+                            }
+                            setItems((prev) =>
+                              prev.map((current) =>
+                                current.id === item.id ? { ...current, telefone: telefoneNormalizado } : current,
+                              ),
+                            );
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : 'Erro desconhecido');
+                          } finally {
+                            setUpdatingTelefoneById((prev) => ({ ...prev, [item.id]: false }));
+                          }
+                        }}
+                        disabled={updatingTelefoneById[item.id] || !isValidPhone(telefoneDraftById[item.id] || '')}
+                        className="rounded border border-cyan-500/30 px-2 py-1 text-[11px] text-cyan-300 hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {updatingTelefoneById[item.id] ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">{item.plan}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex rounded-full border px-2 py-1 text-xs ${statusBadgeClass(item.status)}`}>
@@ -650,7 +706,8 @@ export function RetencaoRenewalList() {
                       </select>
                       <button
                         onClick={() => void handleSendWhatsApp(item)}
-                        disabled={sendingWhatsAppById[item.id] || !item.phone}
+                        disabled={sendingWhatsAppById[item.id] || !isValidPhone(telefoneDraftById[item.id] || item.telefone || '')}
+                        title={isValidPhone(telefoneDraftById[item.id] || item.telefone || '') ? 'Enviar mensagem no WhatsApp' : 'Informe um telefone valido para habilitar'}
                         className="rounded border border-emerald-500/30 px-2 py-1 text-xs text-emerald-300 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {sendingWhatsAppById[item.id] ? 'Enviando...' : 'WhatsApp'}
@@ -685,23 +742,25 @@ export function RetencaoRenewalList() {
               <li key={entry.id} className="rounded-lg border border-slate-700 bg-slate-950/70 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm text-white">
-                    <span className="font-semibold">{entry.studentName}</span> · {entry.phone}
+                    <span className="font-semibold">{entry.alunoNome}</span> · {entry.telefone}
                   </p>
                   <span
                     className={`rounded-full border px-2 py-1 text-[11px] uppercase tracking-wide ${
-                      entry.status === 'enviado'
+                      entry.statusEnvio === 'enviado'
                         ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
-                        : 'border-rose-500/40 bg-rose-500/20 text-rose-300'
+                        : entry.statusEnvio === 'manual'
+                          ? 'border-cyan-500/40 bg-cyan-500/20 text-cyan-300'
+                          : 'border-rose-500/40 bg-rose-500/20 text-rose-300'
                     }`}
                   >
-                    {entry.status}
+                    {entry.statusEnvio}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-400">
-                  {formatSentAt(entry.sentAt)} · por {entry.owner || 'Atendente'}
+                  {formatSentAt(entry.createdAt)} · {entry.canal} · {entry.tipoContato} · por {entry.owner || 'Atendente'}
                 </p>
-                <p className="mt-2 line-clamp-2 text-xs text-slate-300">{entry.message}</p>
-                {entry.errorMessage && <p className="mt-2 text-xs text-rose-300">Erro: {entry.errorMessage}</p>}
+                <p className="mt-2 line-clamp-2 text-xs text-slate-300">{entry.mensagem}</p>
+                {entry.erroDetalhe && <p className="mt-2 text-xs text-rose-300">Erro: {entry.erroDetalhe}</p>}
               </li>
             ))}
           </ul>

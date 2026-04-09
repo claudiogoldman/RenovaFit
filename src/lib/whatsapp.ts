@@ -17,15 +17,20 @@ function getWhatsAppConfig() {
   return { accessToken, phoneNumberId, apiVersion };
 }
 
-function normalizePhone(rawPhone: string): string {
+export function normalizePhone(rawPhone: string): string {
   return rawPhone.replace(/\D/g, '');
+}
+
+export function isValidPhone(rawPhone: string): boolean {
+  const normalized = normalizePhone(rawPhone);
+  return normalized.length >= 10;
 }
 
 export async function sendWhatsAppTextMessage(params: SendWhatsAppTextParams) {
   const { accessToken, phoneNumberId, apiVersion } = getWhatsAppConfig();
   const to = normalizePhone(params.to);
 
-  if (!to || to.length < 10) {
+  if (!isValidPhone(to)) {
     throw new Error('Numero de telefone invalido. Informe DDI+DDD+numero.');
   }
 

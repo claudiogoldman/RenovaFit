@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getAuthenticatedUser } from '@/lib/supabase-auth';
+import { normalizePhone } from '@/lib/whatsapp';
 import type { RenewalItem, RenewalStatus } from '@/lib/types';
 
 type RenewalRow = {
   id: string;
   name: string;
-  phone: string | null;
+  telefone: string | null;
   plan: string;
   status: RenewalStatus;
   renewal_date: string | null;
@@ -21,7 +22,7 @@ function mapRowToItem(row: RenewalRow): RenewalItem {
   return {
     id: row.id,
     name: row.name,
-    phone: row.phone || '',
+    telefone: row.telefone || '',
     plan: row.plan,
     status: row.status,
     renewalDate: row.renewal_date || '',
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     const supabase = createSupabaseServerClient();
     const { data, error } = await supabase
       .from('renewal_items')
-      .select('id,name,phone,plan,status,renewal_date,last_contact,owner,owner_id,notes,created_at')
+      .select('id,name,telefone,plan,status,renewal_date,last_contact,owner,owner_id,notes,created_at')
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false });
 
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
     const supabase = createSupabaseServerClient();
     const payload = {
       name: body.name,
-      phone: body.phone || null,
+      telefone: body.telefone ? normalizePhone(body.telefone) : null,
       plan: body.plan,
       status: body.status,
       owner_id: user.id,
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('renewal_items')
       .insert(payload)
-      .select('id,name,phone,plan,status,renewal_date,last_contact,owner,owner_id,notes')
+      .select('id,name,telefone,plan,status,renewal_date,last_contact,owner,owner_id,notes')
       .single();
 
     if (error) {

@@ -47,7 +47,7 @@ export type RenewalStatus = 'ativo' | 'sumido' | 'critico' | 'renovado';
 export type RenewalItem = {
   id: string;
   name: string;
-  phone: string;
+  telefone: string;
   plan: string;
   status: RenewalStatus;
   renewalDate: string;
@@ -56,18 +56,22 @@ export type RenewalItem = {
   notes: string;
 };
 
-export type ContactChannel = 'whatsapp';
+export type HistoricoContatoCanal = 'whatsapp' | 'telefone' | 'manual';
 
-export type ContactHistoryItem = {
+export type HistoricoContatoTipo = 'primeiro_contato' | 'followup' | 'resposta' | 'observacao';
+
+export type HistoricoContatoStatus = 'pendente' | 'enviado' | 'erro' | 'manual';
+
+export type HistoricoContatoItem = {
   id: string;
-  renewalItemId: string;
-  studentName: string;
-  channel: ContactChannel;
-  phone: string;
-  message: string;
-  status: 'enviado' | 'erro';
-  sentAt: string;
-  providerMessageId: string | null;
-  errorMessage: string | null;
+  renovacaoId: string;
+  alunoNome: string;
+  canal: HistoricoContatoCanal;
+  tipoContato: HistoricoContatoTipo;
+  telefone: string;
+  mensagem: string;
+  statusEnvio: HistoricoContatoStatus;
+  erroDetalhe: string | null;
+  createdAt: string;
   owner: string;
 };
