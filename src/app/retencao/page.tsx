@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { RetencaoAssistant } from '@/components/retencao-assistant';
 
 export const metadata: Metadata = {
   title: 'Retenção de Alunos | RenovaFit',
@@ -22,7 +23,7 @@ export default function RetencaoPage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 gap-8 mb-12">
           <div className="rounded-2xl border border-emerald-400/20 bg-slate-900/50 p-8">
             <h2 className="text-2xl font-bold mb-4 text-emerald-400">📋 Funcionalidades</h2>
             <ul className="space-y-3 text-slate-300">
@@ -35,26 +36,21 @@ export default function RetencaoPage() {
           </div>
 
           <div className="rounded-2xl border border-purple-400/20 bg-slate-900/50 p-8">
-            <h2 className="text-2xl font-bold mb-4 text-purple-400">🎯 Estratégia</h2>
-            <div className="space-y-3 text-slate-300">
-              <p>
-                O app analisa contexto do aluno (família, rotina, plano, frequência) e gera uma abordagem adaptada para cada caso.
-              </p>
-              <p className="font-semibold text-white">
-                Modo local: Funciona sem IA, apenas com heurísticas.
-              </p>
-              <p className="font-semibold text-white">
-                Com Gemini: Respostas 100% personalizadas via IA.
-              </p>
+            <h2 className="text-2xl font-bold mb-4 text-purple-400">🚀 Powered by Gemini</h2>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-slate-400 mb-1">Status</p>
+                <p className="text-lg font-semibold text-white">✅ Ao vivo com IA</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-400 mb-1">Modelo</p>
+                <p className="text-slate-300">Google Gemini 1.5 Flash</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-12 p-8 rounded-2xl border border-slate-700 bg-slate-900/30">
-          <p className="text-slate-400 text-center">
-            Este módulo fará parte do ecossistema RenovaFit. Volte em breve para acessar o app completo.
-          </p>
-        </div>
+        <RetencaoAssistant />
       </div>
     </div>
   );
