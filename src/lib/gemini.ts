@@ -50,7 +50,7 @@ async function generateWithOpenRouter(prompt: string, systemInstructions?: strin
       model: OPENROUTER_MODEL,
       messages,
       temperature: 0.7,
-      max_tokens: 2048,
+      max_tokens: 4096,
     }),
   });
 
@@ -69,6 +69,32 @@ async function generateWithOpenRouter(prompt: string, systemInstructions?: strin
   }
 
   return content;
+}
+
+function looksTruncated(text: string): boolean {
+  const normalized = text.trim();
+  if (!normalized) return true;
+
+  if (normalized.includes('FIM_DA_ESTRATEGIA')) {
+    return false;
+  }
+
+  const lastChar = normalized.at(-1);
+  const endsWell = lastChar ? /[.!?:;)\]\n]$/.test(lastChar) : false;
+  return !endsWell;
+}
+
+function buildRetryPrompt(originalPrompt: string, partialOutput: string): string {
+  return `${originalPrompt}
+
+IMPORTANTE:
+- A resposta anterior foi interrompida no meio.
+- Refaça a resposta COMPLETA do zero, sem resumir.
+- Não interrompa frases no final.
+- Termine obrigatoriamente com a linha: FIM_DA_ESTRATEGIA.
+
+Saída parcial anterior (para referência de continuidade):
+${partialOutput}`;
 }
 
 export async function generateContent(prompt: string, systemInstructions?: string) {
@@ -92,11 +118,27 @@ export async function generateContent(prompt: string, systemInstructions?: strin
           systemInstruction: systemInstructions,
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 4096,
           },
         });
 
-        const text = response.response.text();
+        let text = response.response.text();
+        if (looksTruncated(text)) {
+          const retryResponse = await model.generateContent({
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: buildRetryPrompt(prompt, text) }],
+              },
+            ],
+            systemInstruction: systemInstructions,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 4096,
+            },
+          });
+          text = retryResponse.response.text();
+        }
         return text;
       } catch (error) {
         lastError = error;
@@ -112,7 +154,11 @@ export async function generateContent(prompt: string, systemInstructions?: strin
 
     if (shouldTryFallback(error) && process.env.OPENROUTER_API_KEY) {
       try {
-        return await generateWithOpenRouter(prompt, systemInstructions);
+        let content = await generateWithOpenRouter(prompt, systemInstructions);
+        if (looksTruncated(content)) {
+          content = await generateWithOpenRouter(buildRetryPrompt(prompt, content), systemInstructions);
+        }
+        return content;
       } catch (openRouterError) {
         console.error('Erro ao chamar OpenRouter:', openRouterError);
         throw openRouterError;

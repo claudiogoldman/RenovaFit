@@ -48,15 +48,47 @@ DADOS DO ALUNO:
 - Rotina: ${student.routine}
 - Notas: ${student.notes}
 
-Por favor, gere:
-1. Um resumo do perfil e contexto de renovação
-2. Três pontos de atenção principais
-3. Quatro perguntas diagnósticas para entender barreiras
-4. Quatro versões de mensagem (primeira abordagem, follow-up, direta, consultiva)
-5. Respostas para quatro objeções comuns (preço, tempo, falta de progresso, mudança de prioridade)
-6. Recomendação do próximo passo
+Entregue em markdown, seguindo EXATAMENTE esta estrutura:
 
-Mantenha um tom consultivo, empático e etico. Use português brasileiro.`;
+## 1. Resumo do Perfil e Contexto de Renovação
+- (3 a 5 bullets objetivos)
+
+## 2. Pontos de Atenção
+- (3 bullets: risco percebido, barreira provável, oportunidade de retenção)
+
+## 3. Perguntas Diagnósticas
+- (4 perguntas curtas e práticas)
+
+## 4. Cadência de Contato (D-30 até D+1)
+- (4 passos com objetivo de cada contato)
+
+## 5. Mensagens Prontas
+### 5.1 Primeira abordagem
+### 5.2 Follow-up
+### 5.3 Direta
+### 5.4 Consultiva
+
+## 6. Objeções e Respostas
+### 6.1 Preço
+### 6.2 Falta de tempo
+### 6.3 Falta de progresso
+### 6.4 Mudança de prioridade
+
+## 7. Próximo Passo Recomendado (48h)
+- (plano de ação claro em 3 itens)
+
+## 8. Template Operacional (CRM)
+- canal: whatsapp
+- tipo_contato: primeiro_contato
+- mensagem: (versão curta pronta)
+- próximo_passo: (ação + prazo)
+
+Regras obrigatórias:
+- Linguagem em português brasileiro
+- Tom consultivo, objetivo e ético
+- Máximo de 520 palavras
+- Não deixar seção vazia
+- Encerrar obrigatoriamente com a linha: FIM_DA_ESTRATEGIA`;
 }
 
 export function buildObjectionRetencaoPrompt(student: StudentProfile, objection: string): string {

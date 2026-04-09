@@ -35,14 +35,40 @@ export default function AuthCallbackPage() {
       return;
     }
 
+    const searchParams = new window.URLSearchParams(window.location.search);
+    const hashFragment = window.location.hash.startsWith('#')
+      ? window.location.hash.slice(1)
+      : window.location.hash;
+    const hashParams = new window.URLSearchParams(hashFragment);
+    const errorDescription =
+      searchParams.get('error_description') ||
+      hashParams.get('error_description') ||
+      searchParams.get('error') ||
+      hashParams.get('error');
+
+    if (errorDescription) {
+      setMessage('Link de confirmação inválido ou expirado. Solicite um novo link e tente novamente.');
+      setIsError(true);
+      return;
+    }
+
+    let timedOut = false;
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      setMessage('Não foi possível confirmar a sessão automaticamente. Solicite um novo link de acesso.');
+      setIsError(true);
+    }, 8000);
+
     // Supabase v2 parses the hash automatically on client init.
     // Listen for the resulting SIGNED_IN event.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
+        window.clearTimeout(timeoutId);
         router.replace('/retencao');
         return;
       }
       if (event === 'TOKEN_REFRESHED' && session) {
+        window.clearTimeout(timeoutId);
         router.replace('/retencao');
         return;
       }
@@ -51,12 +77,14 @@ export default function AuthCallbackPage() {
     // Also handle the case where the session is already established
     // (e.g., user opened the link in a tab where they were already signed in).
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      if (session && !timedOut) {
+        window.clearTimeout(timeoutId);
         router.replace('/retencao');
       }
     });
 
     return () => {
+      window.clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, [router]);
@@ -69,9 +97,14 @@ export default function AuthCallbackPage() {
         )}
         <p className={`text-sm ${isError ? 'text-rose-400' : 'text-slate-300'}`}>{message}</p>
         {isError && (
-          <a href="/retencao" className="mt-4 inline-block text-xs text-emerald-400 underline">
-            Voltar para o inicio
-          </a>
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <a href="/retencao" className="text-xs text-emerald-400 underline">
+              Voltar para o início
+            </a>
+            <a href="/retencao" className="text-xs text-slate-400 underline">
+              Solicitar novo link de confirmação
+            </a>
+          </div>
         )}
       </div>
     </div>

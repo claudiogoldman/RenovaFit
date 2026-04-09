@@ -99,6 +99,16 @@ export function RetencaoAssistant() {
     abortControllerRef.current?.abort();
   };
 
+  const operationalTemplate = [
+    'Template Operacional (CRM)',
+    `- aluno_nome: ${student.name || '[preencher nome]'}`,
+    '- canal: whatsapp',
+    '- tipo_contato: primeiro_contato',
+    '- status_envio: pendente',
+    '- mensagem: [colar versao curta da estrategia]',
+    '- proximo_passo: [definir acao e prazo de 48h]',
+  ].join('\n');
+
   return (
     <div className="grid gap-8 lg:grid-cols-2 py-12">
       {/* Formulário */}
@@ -251,6 +261,21 @@ export function RetencaoAssistant() {
             >
               📋 Copiar Estratégia
             </button>
+
+            <div className="mt-4 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-cyan-200">
+                Template Operacional (CRM)
+              </p>
+              <pre className="overflow-x-auto whitespace-pre-wrap text-xs leading-relaxed text-cyan-100">
+                {operationalTemplate}
+              </pre>
+              <button
+                onClick={() => navigator.clipboard.writeText(operationalTemplate)}
+                className="mt-3 rounded-lg border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/20 transition"
+              >
+                📋 Copiar Template CRM
+              </button>
+            </div>
 
           </div>
         )}

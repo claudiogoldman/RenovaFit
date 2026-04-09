@@ -50,7 +50,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Ação inválida' }, { status: 400 });
     }
 
-    const content = await generateContent(prompt, systemInstruction);
+    const content = (await generateContent(prompt, systemInstruction))
+      .replace(/\n?FIM_DA_ESTRATEGIA\s*$/i, '')
+      .trim();
 
     const response: AIResponse = {
       generatedAt: new Date().toISOString(),
