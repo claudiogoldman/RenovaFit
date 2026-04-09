@@ -2,6 +2,8 @@
 
 Ecossistema completo de IA para ajudar academias a gerenciar o ciclo de vida dos alunos: **Conversão** (leads → alunos), **Retenção** (manter alunos ativos), e **Reativação** (recuperar ex-alunos).
 
+Ambiente de produção: https://renovafit.vercel.app
+
 ## 🎯 Três Módulos
 
 ### 1. **Conversão** 🎯
@@ -29,10 +31,10 @@ Recupere ex-alunos entendendo por que saíram.
 
 - **Frontend**: Next.js 16+ com TypeScript, Tailwind CSS, App Router
 - **Backend**: API Routes do Next.js
-- **IA**: Google Gemini (API)
-- **Banco de Dados**: A adicionar (Supabase, MongoDB ou similar)
+- **IA**: Google Gemini + fallback OpenRouter + fallback local
+- **Banco de Dados**: Supabase (módulo de retenção)
 - **Deploy**: Vercel
-- **Autenticação**: A definir (OAuth, Auth0 ou similar)
+- **Autenticação**: Supabase Auth (módulo de retenção)
 
 ## 🚀 Como Começar
 
@@ -76,42 +78,79 @@ Crie um arquivo `.env.local`:
 ```env
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 GEMINI_API_KEY=sua_chave_aqui
+
+# OpenRouter fallback (opcional)
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=openrouter/free
+OPENROUTER_HTTP_REFERER=https://renovafit.vercel.app
+OPENROUTER_APP_NAME=RenovaFit
+
+# Supabase server-side (API)
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Supabase client-side (Auth)
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ```
 
 ## 📁 Estrutura de Pastas
 
 ```
 renovafit/
+├── .github/workflows/       # CI pipeline
 ├── src/
 │   ├── app/
 │   │   ├── page.tsx           # Home
 │   │   ├── conversao/
 │   │   ├── retencao/
 │   │   ├── reativacao/
+│   │   ├── api/
+│   │   │   ├── conversao/
+│   │   │   ├── retencao/
+│   │   │   ├── reativacao/
+│   │   │   ├── renewals/
+│   │   │   └── whatsapp/
 │   │   ├── layout.tsx
 │   │   └── globals.css
 │   ├── components/            # Componentes reutilizáveis
 │   └── lib/                   # Utilitários e helpers
+├── SUPABASE_SETUP.md
+├── SETUP_GEMINI.md
+├── CHANGELOG.md
 ├── package.json
 ├── tsconfig.json
 ├── next.config.ts
 └── README.md
 ```
 
-## 🔄 Fluxo de Desenvolvimento
+## ✅ Estado Atual
 
-1. **MVP Stateless** (atual): Função web com fallback local, sem banco de dados
-2. **Integração Gemini**: API de IA em todas as abordagens
-3. **Banco de Dados**: Histórico de alunos, leads e ex-alunos
-4. **Autenticação**: Login para academias gerenciarem seus dados
-5. **Dashboard**: Relatórios de conversão, retenção e reativação
-6. **Integrações**: Webhook com sistemas de academia (iClub, Fittrix, etc)
+1. Módulos Conversão, Retenção e Reativação ativos com IA.
+2. Fallback entre providers de IA e fallback local quando necessário.
+3. Respostas formatadas em markdown para melhor legibilidade.
+4. Persistência local de formulário e última saída da IA.
+5. Módulo de retenção com lista operacional e KPIs.
+6. Lista de retenção conectada ao Supabase via API.
+7. Autenticação por atendente no fluxo de retenção.
+8. CI de lint e build em push/PR para main.
+
+## 🧭 Próximos Passos
+
+1. Consolidar modelagem única de ciclo de vida (lead -> ativo -> ex-aluno).
+2. Expandir autenticação/multi-tenant para todos os módulos.
+3. Dashboard consolidado por equipe e por unidade.
+4. Histórico de interação e trilha de decisões por aluno.
+5. Endurecimento de segurança e políticas de acesso no Supabase.
 
 ## 📚 Documentação
 
 - Conversão: `/conversao`
 - Retenção: `/retencao`
 - Reativação: `/reativacao`
+- Setup IA: `SETUP_GEMINI.md`
+- Setup banco: `SUPABASE_SETUP.md`
+- Evolução do projeto: `CHANGELOG.md`
 
 ## 🤝 Contribuindo
 
