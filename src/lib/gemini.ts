@@ -15,7 +15,7 @@ function getGeminiClient(): GoogleGenerativeAI {
 
 export const MODEL_NAME = 'gemini-2.5-flash';
 export const FALLBACK_MODEL_NAME = 'gemini-2.0-flash';
-export const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'openrouter/free';
+export const OPENROUTER_MODEL = (process.env.OPENROUTER_MODEL || 'openrouter/free').trim();
 
 function shouldTryFallback(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
@@ -23,10 +23,14 @@ function shouldTryFallback(error: unknown): boolean {
 }
 
 async function generateWithOpenRouter(prompt: string, systemInstructions?: string): Promise<string> {
-  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+  const openRouterApiKey = process.env.OPENROUTER_API_KEY?.trim();
   if (!openRouterApiKey) {
     throw new Error('OPENROUTER_API_KEY environment variable is not set');
   }
+
+  const httpReferer =
+    process.env.OPENROUTER_HTTP_REFERER?.trim() || 'https://renovafit.vercel.app';
+  const appName = process.env.OPENROUTER_APP_NAME?.trim() || 'RenovaFit';
 
   const messages = [] as Array<{ role: 'system' | 'user'; content: string }>;
   if (systemInstructions) {
@@ -39,8 +43,8 @@ async function generateWithOpenRouter(prompt: string, systemInstructions?: strin
     headers: {
       Authorization: `Bearer ${openRouterApiKey}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.OPENROUTER_HTTP_REFERER || 'https://renovafit.vercel.app',
-      'X-Title': process.env.OPENROUTER_APP_NAME || 'RenovaFit',
+      'HTTP-Referer': httpReferer,
+      'X-Title': appName,
     },
     body: JSON.stringify({
       model: OPENROUTER_MODEL,

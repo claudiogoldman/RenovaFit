@@ -5,6 +5,7 @@ import { buildRetencaoFallback } from '@/lib/local-fallback';
 import {
   buildRetencaoPrompt,
   buildObjectionRetencaoPrompt,
+  type RetencaoStrategyStyle,
 } from '@/lib/prompts-retencao';
 import type { StudentProfile, AIResponse } from '@/lib/types';
 
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
     notes: '',
   };
   let objection: string | undefined;
+  let strategyStyle: RetencaoStrategyStyle = 'executivo';
 
   try {
     const body = await request.json();
@@ -27,14 +29,16 @@ export async function POST(request: NextRequest) {
       action: 'strategy' | 'objection';
       student: StudentProfile;
       objection?: string;
+      strategyStyle?: RetencaoStrategyStyle;
     });
+    strategyStyle = (body as { strategyStyle?: RetencaoStrategyStyle }).strategyStyle || 'executivo';
 
     let prompt = '';
     let systemInstruction = 'Você é um especialista em retenção de alunos de academia.';
 
     switch (action) {
       case 'strategy':
-        prompt = buildRetencaoPrompt(student);
+        prompt = buildRetencaoPrompt(student, strategyStyle);
         break;
       case 'objection':
         if (!objection) {

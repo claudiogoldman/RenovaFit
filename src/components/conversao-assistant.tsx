@@ -3,9 +3,20 @@
 import { useState } from 'react';
 import type { LeadProfile } from '@/lib/types';
 import { AIFormattedResponse } from '@/components/ai-formatted-response';
+import { usePersistedState } from '@/hooks/use-persisted-state';
 
 export function ConversaoAssistant() {
-  const [lead, setLead] = useState<LeadProfile>({
+  const genderOptions = ['Masculino', 'Feminino', 'Nao-binario', 'Prefere nao informar'];
+  const goalOptions = [
+    'Emagrecer',
+    'Ganhar massa muscular',
+    'Melhorar condicionamento',
+    'Saude e bem-estar',
+    'Reabilitacao',
+    'Qualidade de vida',
+  ];
+
+  const [lead, setLead] = usePersistedState<LeadProfile>('renovafit:conversao:lead', {
     name: '',
     age: '',
     gender: '',
@@ -16,7 +27,7 @@ export function ConversaoAssistant() {
     notes: '',
   });
 
-  const [output, setOutput] = useState<string | null>(null);
+  const [output, setOutput] = usePersistedState<string | null>('renovafit:conversao:output', null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,11 +68,41 @@ export function ConversaoAssistant() {
         <h2 className="text-2xl font-bold text-cyan-400">📋 Perfil do Lead</h2>
 
         <div className="space-y-4">
+          <label className="flex flex-col gap-2 text-sm text-slate-200">
+            Sexo/Gênero
+            <select
+              value={lead.gender}
+              onChange={(e) => handleChange('gender', e.target.value)}
+              className="rounded-lg border border-cyan-400/20 bg-slate-900 px-4 py-2 text-white focus:border-cyan-400 focus:outline-none"
+            >
+              <option value="">Selecione</option>
+              {genderOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2 text-sm text-slate-200">
+            Objetivo
+            <select
+              value={lead.goal}
+              onChange={(e) => handleChange('goal', e.target.value)}
+              className="rounded-lg border border-cyan-400/20 bg-slate-900 px-4 py-2 text-white focus:border-cyan-400 focus:outline-none"
+            >
+              <option value="">Selecione</option>
+              {goalOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+
           {[
             { key: 'name' as const, label: 'Nome', placeholder: 'Ex.: João Silva' },
             { key: 'age' as const, label: 'Idade', placeholder: 'Ex.: 28' },
-            { key: 'gender' as const, label: 'Sexo/Gênero', placeholder: 'Ex.: masculino' },
-            { key: 'goal' as const, label: 'Objetivo', placeholder: 'Ex.: emagrecer, ganhar força' },
             {
               key: 'availability' as const,
               label: 'Disponibilidade',

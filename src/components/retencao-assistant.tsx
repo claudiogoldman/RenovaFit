@@ -4,9 +4,20 @@ import { useState } from 'react';
 import type { StudentProfile } from '@/lib/types';
 import type { RetencaoStrategyStyle } from '@/lib/prompts-retencao';
 import { AIFormattedResponse } from '@/components/ai-formatted-response';
+import { usePersistedState } from '@/hooks/use-persisted-state';
 
 export function RetencaoAssistant() {
-  const [student, setStudent] = useState<StudentProfile>({
+  const genderOptions = ['Masculino', 'Feminino', 'Nao-binario', 'Prefere nao informar'];
+  const goalOptions = [
+    'Emagrecer',
+    'Ganhar massa muscular',
+    'Melhorar condicionamento',
+    'Saude e bem-estar',
+    'Reabilitacao',
+    'Qualidade de vida',
+  ];
+
+  const [student, setStudent] = usePersistedState<StudentProfile>('renovafit:retencao:student', {
     name: '',
     age: '',
     gender: '',
@@ -17,10 +28,13 @@ export function RetencaoAssistant() {
     notes: '',
   });
 
-  const [output, setOutput] = useState<string | null>(null);
+  const [output, setOutput] = usePersistedState<string | null>('renovafit:retencao:output', null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [strategyStyle, setStrategyStyle] = useState<RetencaoStrategyStyle>('executivo');
+  const [strategyStyle, setStrategyStyle] = usePersistedState<RetencaoStrategyStyle>(
+    'renovafit:retencao:strategyStyle',
+    'executivo',
+  );
 
   const handleChange = (field: keyof StudentProfile, value: string) => {
     setStudent((prev) => ({ ...prev, [field]: value }));
@@ -71,12 +85,42 @@ export function RetencaoAssistant() {
             </select>
           </label>
 
+          <label className="flex flex-col gap-2 text-sm text-slate-200">
+            Sexo/Gênero
+            <select
+              value={student.gender}
+              onChange={(e) => handleChange('gender', e.target.value)}
+              className="rounded-lg border border-emerald-400/20 bg-slate-900 px-4 py-2 text-white focus:border-emerald-400 focus:outline-none"
+            >
+              <option value="">Selecione</option>
+              {genderOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2 text-sm text-slate-200">
+            Objetivo
+            <select
+              value={student.goal}
+              onChange={(e) => handleChange('goal', e.target.value)}
+              className="rounded-lg border border-emerald-400/20 bg-slate-900 px-4 py-2 text-white focus:border-emerald-400 focus:outline-none"
+            >
+              <option value="">Selecione</option>
+              {goalOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+
           {[
             { key: 'name' as const, label: 'Nome', placeholder: 'Ex.: Mariana' },
             { key: 'age' as const, label: 'Idade', placeholder: 'Ex.: 34' },
-            { key: 'gender' as const, label: 'Sexo/Gênero', placeholder: 'Ex.: feminino' },
             { key: 'selectedPlan' as const, label: 'Plano', placeholder: 'Ex.: plano trimestral' },
-            { key: 'goal' as const, label: 'Objetivo', placeholder: 'Ex.: emagrecer, ganhar energia' },
             { key: 'hasChildren' as const, label: 'Filhos', placeholder: 'Ex.: sim, 2 filhos' },
           ].map(({ key, label, placeholder }) => (
             <label key={key} className="flex flex-col gap-2 text-sm text-slate-200">

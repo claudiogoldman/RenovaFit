@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import type { ExStudentProfile } from '@/lib/types';
 import { AIFormattedResponse } from '@/components/ai-formatted-response';
+import { usePersistedState } from '@/hooks/use-persisted-state';
 
 export function ReativacaoAssistant() {
-  const [exStudent, setExStudent] = useState<ExStudentProfile>({
+  const [exStudent, setExStudent] = usePersistedState<ExStudentProfile>('renovafit:reativacao:exStudent', {
     name: '',
     age: '',
     cancelledWhen: '',
@@ -16,7 +17,7 @@ export function ReativacaoAssistant() {
     notes: '',
   });
 
-  const [output, setOutput] = useState<string | null>(null);
+  const [output, setOutput] = usePersistedState<string | null>('renovafit:reativacao:output', null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
