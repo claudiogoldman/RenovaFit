@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { RenewalItem, RenewalStatus } from '@/lib/types';
 import { usePersistedState } from '@/hooks/use-persisted-state';
 
@@ -11,9 +11,11 @@ const STATUS_OPTIONS: Array<{ value: RenewalStatus; label: string }> = [
   { value: 'renovado', label: 'Renovado' },
 ];
 
+const PLAN_OPTIONS = ['Anual', 'Semestral', 'Trimestral', 'Mensal'];
+
 const INITIAL_FORM: Omit<RenewalItem, 'id'> = {
   name: '',
-  plan: 'Mensal',
+  plan: 'Anual',
   status: 'ativo',
   renewalDate: '',
   lastContact: '',
@@ -44,11 +46,37 @@ function statusBadgeClass(status: RenewalStatus): string {
 }
 
 export function RetencaoRenewalList() {
-  const [items, setItems] = usePersistedState<RenewalItem[]>('renovafit:retencao:lista', []);
+  const [items, setItems] = useState<RenewalItem[]>([]);
   const [form, setForm] = useState(INITIAL_FORM);
+  const [loadingList, setLoadingList] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = usePersistedState<string>('renovafit:retencao:lista:search', '');
   const [statusFilter, setStatusFilter] = usePersistedState<string>('renovafit:retencao:lista:status', 'todos');
   const [planFilter, setPlanFilter] = usePersistedState<string>('renovafit:retencao:lista:plan', 'todos');
+
+  const loadItems = async () => {
+    setLoadingList(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/renewals');
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.details || result.error || 'Erro ao carregar lista');
+      }
+
+      setItems(result.data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadItems();
+  }, []);
 
   const plans = useMemo(() => {
     const values = Array.from(new Set(items.map((item) => item.plan).filter(Boolean)));
@@ -90,26 +118,66 @@ export function RetencaoRenewalList() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!form.name || !form.plan || !form.status) {
       return;
     }
 
-    const newItem: RenewalItem = {
-      id: `${Date.now()}`,
-      ...form,
-    };
+    try {
+      const response = await fetch('/api/renewals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
 
-    setItems((prev) => [newItem, ...prev]);
-    setForm(INITIAL_FORM);
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.details || result.error || 'Erro ao criar item');
+      }
+
+      setItems((prev) => [result.data as RenewalItem, ...prev]);
+      setForm(INITIAL_FORM);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
   };
 
-  const handleRemove = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+  const handleRemove = async (id: string) => {
+    try {
+      const response = await fetch(`/api/renewals/${id}`, {
+        method: 'DELETE',
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.details || result.error || 'Erro ao remover item');
+      }
+
+      setItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
   };
 
-  const handleStatusUpdate = (id: string, status: RenewalStatus) => {
+  const handleStatusUpdate = async (id: string, status: RenewalStatus) => {
+    const previous = items;
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+
+    try {
+      const response = await fetch(`/api/renewals/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.details || result.error || 'Erro ao atualizar status');
+      }
+    } catch (err) {
+      setItems(previous);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
   };
 
   return (
@@ -118,6 +186,12 @@ export function RetencaoRenewalList() {
         <h2 className="text-3xl font-bold text-white">Lista de Renovacao</h2>
         <p className="mt-2 text-slate-400">Controle operacional da carteira com filtros, prioridade e atualizacao rapida de status.</p>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-400/20 bg-red-900/20 p-4 text-sm text-red-200">
+          {error}
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
@@ -151,12 +225,17 @@ export function RetencaoRenewalList() {
             placeholder="Nome"
             className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
           />
-          <input
+          <select
             value={form.plan}
             onChange={(e) => handleFormChange('plan', e.target.value)}
-            placeholder="Plano"
             className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
-          />
+          >
+            {PLAN_OPTIONS.map((plan) => (
+              <option key={plan} value={plan}>
+                {plan}
+              </option>
+            ))}
+          </select>
           <select
             value={form.status}
             onChange={(e) => handleFormChange('status', e.target.value)}
@@ -194,7 +273,7 @@ export function RetencaoRenewalList() {
           />
         </div>
         <button
-          onClick={handleAddItem}
+          onClick={() => void handleAddItem()}
           className="mt-4 rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-950 hover:bg-emerald-400"
         >
           Adicionar na lista
@@ -235,6 +314,11 @@ export function RetencaoRenewalList() {
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-700">
+        {loadingList && (
+          <div className="border-b border-slate-700 bg-slate-900/80 px-4 py-2 text-xs text-slate-400">
+            Carregando lista da equipe...
+          </div>
+        )}
         <table className="min-w-full divide-y divide-slate-700">
           <thead className="bg-slate-900/80">
             <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
@@ -270,7 +354,7 @@ export function RetencaoRenewalList() {
                     <div className="flex gap-2">
                       <select
                         value={item.status}
-                        onChange={(e) => handleStatusUpdate(item.id, e.target.value as RenewalStatus)}
+                        onChange={(e) => void handleStatusUpdate(item.id, e.target.value as RenewalStatus)}
                         className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs"
                       >
                         {STATUS_OPTIONS.map((status) => (
@@ -280,7 +364,7 @@ export function RetencaoRenewalList() {
                         ))}
                       </select>
                       <button
-                        onClick={() => handleRemove(item.id)}
+                        onClick={() => void handleRemove(item.id)}
                         className="rounded border border-rose-500/30 px-2 py-1 text-xs text-rose-300 hover:bg-rose-500/10"
                       >
                         Remover

@@ -8,6 +8,7 @@ import { usePersistedState } from '@/hooks/use-persisted-state';
 
 export function RetencaoAssistant() {
   const genderOptions = ['Masculino', 'Feminino', 'Nao-binario', 'Prefere nao informar'];
+  const planOptions = ['Anual', 'Semestral', 'Trimestral', 'Mensal'];
   const goalOptions = [
     'Emagrecer',
     'Ganhar massa muscular',
@@ -21,7 +22,7 @@ export function RetencaoAssistant() {
     name: '',
     age: '',
     gender: '',
-    selectedPlan: '',
+    selectedPlan: 'Anual',
     goal: '',
     hasChildren: '',
     routine: '',
@@ -149,10 +150,24 @@ export function RetencaoAssistant() {
             </select>
           </label>
 
+          <label className="flex flex-col gap-2 text-sm text-slate-200">
+            Plano
+            <select
+              value={student.selectedPlan || 'Anual'}
+              onChange={(e) => handleChange('selectedPlan', e.target.value)}
+              className="rounded-lg border border-emerald-400/20 bg-slate-900 px-4 py-2 text-white focus:border-emerald-400 focus:outline-none"
+            >
+              {planOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+
           {[
             { key: 'name' as const, label: 'Nome', placeholder: 'Ex.: Mariana' },
             { key: 'age' as const, label: 'Idade', placeholder: 'Ex.: 34' },
-            { key: 'selectedPlan' as const, label: 'Plano', placeholder: 'Ex.: plano trimestral' },
             { key: 'hasChildren' as const, label: 'Filhos', placeholder: 'Ex.: sim, 2 filhos' },
           ].map(({ key, label, placeholder }) => (
             <label key={key} className="flex flex-col gap-2 text-sm text-slate-200">
