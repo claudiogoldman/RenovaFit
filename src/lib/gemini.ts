@@ -13,7 +13,7 @@ function getGeminiClient(): GoogleGenerativeAI {
   return cachedClient;
 }
 
-export const MODEL_NAME = 'gemini-1.5-flash';
+export const MODEL_NAME = 'gemini-2.5-flash';
 
 export async function generateContent(prompt: string, systemInstructions?: string) {
   try {

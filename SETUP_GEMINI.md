@@ -126,13 +126,13 @@ src/
 
 - **Framework**: Next.js 16 com TypeScript
 - **Styling**: Tailwind CSS v4
-- **IA**: Google Generative AI (Gemini 1.5 Flash)
+- **IA**: Google Generative AI (Gemini 2.5 Flash)
 - **Deployment**: Vercel
 - **Version Control**: GitHub
 
 ## 📝 Modelos de IA
 
-Cada módulo usa prompts personalizados com o modelo **Gemini 1.5 Flash**:
+Cada módulo usa prompts personalizados com o modelo **Gemini 2.5 Flash**:
 
 **Conversão** (Lead → Aluno)
 - Perguntas diagnósticas para descobrir objetivos
