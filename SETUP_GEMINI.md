@@ -56,13 +56,13 @@ Se a cota do Gemini acabar ou o modelo ficar indisponivel, o backend pode usar O
 ```bash
 # No .env.local
 OPENROUTER_API_KEY=sua-chave-openrouter
-OPENROUTER_MODEL=google/gemma-3-27b-it:free
+OPENROUTER_MODEL=openrouter/free
 OPENROUTER_HTTP_REFERER=https://renovafit.vercel.app
 OPENROUTER_APP_NAME=RenovaFit
 ```
 
 No Vercel, adicione as mesmas variaveis em Environment Variables.
-Se preferir outro modelo gratuito, use um nome com sufixo :free no OPENROUTER_MODEL.
+Se preferir fixar um modelo gratuito especifico, use um nome com sufixo :free no OPENROUTER_MODEL.
 
 ### 4. Testar os Módulos
 

@@ -15,7 +15,7 @@ function getGeminiClient(): GoogleGenerativeAI {
 
 export const MODEL_NAME = 'gemini-2.5-flash';
 export const FALLBACK_MODEL_NAME = 'gemini-2.0-flash';
-export const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'google/gemma-3-27b-it:free';
+export const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'openrouter/free';
 
 function shouldTryFallback(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
