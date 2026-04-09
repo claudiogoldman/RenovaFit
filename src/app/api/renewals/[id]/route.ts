@@ -36,12 +36,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const details = error instanceof Error ? error.message : 'Erro desconhecido';
+    const status = /missing bearer token|unauthorized/i.test(details) ? 401 : 500;
     return NextResponse.json(
       {
         error: 'Erro ao atualizar status',
-        details: error instanceof Error ? error.message : 'Erro desconhecido',
+        details,
       },
-      { status: 500 },
+      { status },
     );
   }
 }
@@ -68,12 +70,14 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const details = error instanceof Error ? error.message : 'Erro desconhecido';
+    const status = /missing bearer token|unauthorized/i.test(details) ? 401 : 500;
     return NextResponse.json(
       {
         error: 'Erro ao remover item',
-        details: error instanceof Error ? error.message : 'Erro desconhecido',
+        details,
       },
-      { status: 500 },
+      { status },
     );
   }
 }

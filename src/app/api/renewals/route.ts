@@ -48,12 +48,14 @@ export async function GET(request: NextRequest) {
       data: (data || []).map(mapRowToItem),
     });
   } catch (error) {
+    const details = error instanceof Error ? error.message : 'Erro desconhecido';
+    const status = /missing bearer token|unauthorized/i.test(details) ? 401 : 500;
     return NextResponse.json(
       {
         error: 'Erro ao carregar lista de renovacao',
-        details: error instanceof Error ? error.message : 'Erro desconhecido',
+        details,
       },
-      { status: 500 },
+      { status },
     );
   }
 }
@@ -97,12 +99,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: mapRowToItem(data as RenewalRow) });
   } catch (error) {
+    const details = error instanceof Error ? error.message : 'Erro desconhecido';
+    const status = /missing bearer token|unauthorized/i.test(details) ? 401 : 500;
     return NextResponse.json(
       {
         error: 'Erro ao criar item de renovacao',
-        details: error instanceof Error ? error.message : 'Erro desconhecido',
+        details,
       },
-      { status: 500 },
+      { status },
     );
   }
 }
