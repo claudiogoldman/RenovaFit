@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getAuthenticatedUser } from '@/lib/supabase-auth';
 import type { RenewalItem, RenewalStatus } from '@/lib/types';
 
 type RenewalRow = {
@@ -10,6 +11,7 @@ type RenewalRow = {
   renewal_date: string | null;
   last_contact: string | null;
   owner: string | null;
+  owner_id: string;
   notes: string | null;
   created_at?: string;
 };
@@ -27,12 +29,14 @@ function mapRowToItem(row: RenewalRow): RenewalItem {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const user = await getAuthenticatedUser(request);
     const supabase = createSupabaseServerClient();
     const { data, error } = await supabase
       .from('renewal_items')
-      .select('id,name,plan,status,renewal_date,last_contact,owner,notes,created_at')
+      .select('id,name,plan,status,renewal_date,last_contact,owner,owner_id,notes,created_at')
+      .eq('owner_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -56,6 +60,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getAuthenticatedUser(request);
     const body = (await request.json()) as Omit<RenewalItem, 'id'>;
 
     if (!body.name || !body.plan || !body.status) {
@@ -70,16 +75,20 @@ export async function POST(request: NextRequest) {
       name: body.name,
       plan: body.plan,
       status: body.status,
+      owner_id: user.id,
+      owner:
+        (user.user_metadata?.full_name as string | undefined) ||
+        (user.email as string | undefined) ||
+        'Atendente',
       renewal_date: body.renewalDate || null,
       last_contact: body.lastContact || null,
-      owner: body.owner || null,
       notes: body.notes || null,
     };
 
     const { data, error } = await supabase
       .from('renewal_items')
       .insert(payload)
-      .select('id,name,plan,status,renewal_date,last_contact,owner,notes')
+      .select('id,name,plan,status,renewal_date,last_contact,owner,owner_id,notes')
       .single();
 
     if (error) {

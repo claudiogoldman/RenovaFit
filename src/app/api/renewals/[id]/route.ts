@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getAuthenticatedUser } from '@/lib/supabase-auth';
 import type { RenewalStatus } from '@/lib/types';
 
 type RouteContext = {
@@ -8,6 +9,7 @@ type RouteContext = {
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
+    const user = await getAuthenticatedUser(request);
     const { id } = await context.params;
     const body = (await request.json()) as {
       status?: RenewalStatus;
@@ -25,7 +27,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { error } = await supabase
       .from('renewal_items')
       .update({ status: body.status })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('owner_id', user.id);
 
     if (error) {
       throw new Error(error.message);
@@ -45,6 +48,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {
+    const user = await getAuthenticatedUser(_request);
     const { id } = await context.params;
 
     if (!id) {
@@ -52,7 +56,11 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     }
 
     const supabase = createSupabaseServerClient();
-    const { error } = await supabase.from('renewal_items').delete().eq('id', id);
+    const { error } = await supabase
+      .from('renewal_items')
+      .delete()
+      .eq('id', id)
+      .eq('owner_id', user.id);
 
     if (error) {
       throw new Error(error.message);

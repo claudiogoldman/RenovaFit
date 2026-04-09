@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import type { RenewalItem, RenewalStatus } from '@/lib/types';
 import { usePersistedState } from '@/hooks/use-persisted-state';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 const STATUS_OPTIONS: Array<{ value: RenewalStatus; label: string }> = [
   { value: 'ativo', label: 'Ativo' },
@@ -46,6 +48,15 @@ function statusBadgeClass(status: RenewalStatus): string {
 }
 
 export function RetencaoRenewalList() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [team, setTeam] = useState('');
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+
   const [items, setItems] = useState<RenewalItem[]>([]);
   const [form, setForm] = useState(INITIAL_FORM);
   const [loadingList, setLoadingList] = useState(false);
@@ -53,13 +64,82 @@ export function RetencaoRenewalList() {
   const [search, setSearch] = usePersistedState<string>('renovafit:retencao:lista:search', '');
   const [statusFilter, setStatusFilter] = usePersistedState<string>('renovafit:retencao:lista:status', 'todos');
   const [planFilter, setPlanFilter] = usePersistedState<string>('renovafit:retencao:lista:plan', 'todos');
+  const [authUnavailable, setAuthUnavailable] = useState(false);
+
+  const hasAuthConfig =
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+
+  const supabase = useMemo(() => {
+    if (!hasAuthConfig) {
+      setAuthUnavailable(true);
+      return null;
+    }
+
+    try {
+      return createSupabaseBrowserClient();
+    } catch {
+      setAuthUnavailable(true);
+      return null;
+    }
+  }, [hasAuthConfig]);
+
+  const fetchWithAuth = async (url: string, init?: RequestInit) => {
+    if (!session?.access_token) {
+      throw new Error('Sessao de usuario nao encontrada. Faca login novamente.');
+    }
+
+    return fetch(url, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init?.headers || {}),
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+  };
+
+  useEffect(() => {
+    if (!supabase) {
+      setAuthLoading(false);
+      return;
+    }
+
+    let active = true;
+    const init = async () => {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (!active) {
+        return;
+      }
+
+      if (sessionError) {
+        setAuthError(sessionError.message);
+      }
+
+      setSession(data.session || null);
+      setAuthLoading(false);
+    };
+
+    void init();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, updatedSession) => {
+      setSession(updatedSession || null);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const loadItems = async () => {
     setLoadingList(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/renewals');
+      const response = await fetchWithAuth('/api/renewals');
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -75,8 +155,13 @@ export function RetencaoRenewalList() {
   };
 
   useEffect(() => {
+    if (!session) {
+      setItems([]);
+      return;
+    }
+
     void loadItems();
-  }, []);
+  }, [session]);
 
   const plans = useMemo(() => {
     const values = Array.from(new Set(items.map((item) => item.plan).filter(Boolean)));
@@ -126,7 +211,10 @@ export function RetencaoRenewalList() {
     try {
       const response = await fetch('/api/renewals', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token || ''}`,
+        },
         body: JSON.stringify(form),
       });
 
@@ -146,6 +234,9 @@ export function RetencaoRenewalList() {
     try {
       const response = await fetch(`/api/renewals/${id}`, {
         method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session?.access_token || ''}`,
+        },
       });
       const result = await response.json();
 
@@ -166,7 +257,10 @@ export function RetencaoRenewalList() {
     try {
       const response = await fetch(`/api/renewals/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token || ''}`,
+        },
         body: JSON.stringify({ status }),
       });
 
@@ -182,6 +276,114 @@ export function RetencaoRenewalList() {
 
   return (
     <section className="mt-16 space-y-8">
+      {authUnavailable && (
+        <div className="rounded-lg border border-red-400/20 bg-red-900/20 p-4 text-sm text-red-200">
+          Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY no Vercel para ativar login da equipe.
+        </div>
+      )}
+
+      {!authUnavailable && !session && (
+        <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-xl font-semibold text-white">Entrar na carteira de retencao</h3>
+            <button
+              onClick={() => setAuthMode((prev) => (prev === 'signin' ? 'signup' : 'signin'))}
+              className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
+            >
+              {authMode === 'signin' ? 'Criar conta' : 'Ja tenho conta'}
+            </button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Senha"
+              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+            />
+            {authMode === 'signup' && (
+              <>
+                <input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Nome do atendente"
+                  className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+                />
+                <input
+                  value={team}
+                  onChange={(e) => setTeam(e.target.value)}
+                  placeholder="Equipe (opcional)"
+                  className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+                />
+              </>
+            )}
+          </div>
+
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              onClick={async () => {
+                if (!supabase) return;
+                setAuthError(null);
+                try {
+                  if (authMode === 'signin') {
+                    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+                    if (signInError) throw signInError;
+                  } else {
+                    const { error: signUpError } = await supabase.auth.signUp({
+                      email,
+                      password,
+                      options: { data: { full_name: fullName, team } },
+                    });
+                    if (signUpError) throw signUpError;
+                    setAuthError('Conta criada. Verifique seu email para confirmar cadastro, se solicitado.');
+                  }
+                } catch (err) {
+                  setAuthError(err instanceof Error ? err.message : 'Erro de autenticacao');
+                }
+              }}
+              disabled={authLoading || !email || !password}
+              className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {authMode === 'signin' ? 'Entrar' : 'Criar conta'}
+            </button>
+            {authLoading && <span className="text-xs text-slate-400">Carregando sessao...</span>}
+          </div>
+
+          {authError && <p className="mt-3 text-sm text-amber-300">{authError}</p>}
+        </div>
+      )}
+
+      {session && (
+        <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-3">
+          <p className="text-sm text-slate-300">
+            Logado como{' '}
+            <span className="font-semibold text-white">
+              {(session.user.user_metadata?.full_name as string | undefined) || session.user.email}
+            </span>
+            {session.user.user_metadata?.team ? ` · Equipe: ${String(session.user.user_metadata.team)}` : ''}
+          </p>
+          <button
+            onClick={async () => {
+              if (!supabase) return;
+              await supabase.auth.signOut();
+            }}
+            className="rounded border border-slate-600 px-3 py-1 text-xs text-slate-300 hover:bg-slate-800"
+          >
+            Sair
+          </button>
+        </div>
+      )}
+
+      {!session ? null : (
+        <>
       <div>
         <h2 className="text-3xl font-bold text-white">Lista de Renovacao</h2>
         <p className="mt-2 text-slate-400">Controle operacional da carteira com filtros, prioridade e atualizacao rapida de status.</p>
@@ -380,6 +582,8 @@ export function RetencaoRenewalList() {
           <div className="p-6 text-center text-slate-400">Nenhum aluno encontrado com os filtros atuais.</div>
         )}
       </div>
+        </>
+      )}
     </section>
   );
 }
