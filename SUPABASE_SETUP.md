@@ -8,6 +8,18 @@ Adicione no projeto:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_APP_URL` (producao: `https://renovafit.vercel.app`)
+
+## 1.1) Configuracao de Auth no Supabase Dashboard
+
+No painel do Supabase, abra `Authentication > URL Configuration` e configure:
+
+- `Site URL`: `https://renovafit.vercel.app`
+- `Redirect URLs`:
+  - `https://renovafit.vercel.app/auth/callback`
+  - `http://localhost:3000/auth/callback`
+
+Sem esses valores, o link de confirmacao por e-mail pode redirecionar para localhost em producao.
 
 ## 2) Rodar SQL no Supabase (SQL Editor)
 
