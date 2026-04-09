@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ExStudentProfile } from '@/lib/types';
 import { AIFormattedResponse } from '@/components/ai-formatted-response';
 import { usePersistedState } from '@/hooks/use-persisted-state';
-import { WhatsAppSendPanel } from '@/components/whatsapp-send-panel';
 
 export function ReativacaoAssistant() {
   const [exStudent, setExStudent] = usePersistedState<ExStudentProfile>('renovafit:reativacao:exStudent', {
@@ -21,13 +20,35 @@ export function ReativacaoAssistant() {
   const [output, setOutput] = usePersistedState<string | null>('renovafit:reativacao:output', null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (!loading) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [loading]);
 
   const handleChange = (field: keyof ExStudentProfile, value: string) => {
     setExStudent((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleGenerate = async () => {
+    if (loading) {
+      return;
+    }
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     setLoading(true);
+    setElapsedSeconds(0);
     setError(null);
     setOutput(null);
 
@@ -36,6 +57,7 @@ export function ReativacaoAssistant() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'strategy', exStudent }),
+        signal: abortController.signal,
       });
 
       const result = await response.json();
@@ -46,10 +68,19 @@ export function ReativacaoAssistant() {
 
       setOutput(result.data.messages[0]);
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Geracao interrompida.');
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
       setLoading(false);
+      abortControllerRef.current = null;
     }
+  };
+
+  const handleCancelGeneration = () => {
+    abortControllerRef.current?.abort();
   };
 
   return (
@@ -106,6 +137,23 @@ export function ReativacaoAssistant() {
         >
           {loading ? 'Gerando...' : 'Gerar Estratégia de Reativação'}
         </button>
+
+        {loading && (
+          <div className="rounded-lg border border-purple-400/20 bg-purple-400/5 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 text-purple-200">
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-purple-300 border-t-transparent" />
+                <span className="text-sm">Gerando estratégia... {elapsedSeconds}s</span>
+              </div>
+              <button
+                onClick={handleCancelGeneration}
+                className="rounded-md border border-purple-300/30 bg-slate-900 px-3 py-1 text-xs font-semibold text-purple-200 hover:bg-slate-800"
+              >
+                Interromper
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Output */}
@@ -129,11 +177,6 @@ export function ReativacaoAssistant() {
               📋 Copiar Estratégia
             </button>
 
-            <WhatsAppSendPanel
-              message={output}
-              storageKey="renovafit:reativacao"
-              accentClassName="text-purple-300"
-            />
           </div>
         )}
 

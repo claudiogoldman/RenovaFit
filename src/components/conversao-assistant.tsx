@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { LeadProfile } from '@/lib/types';
 import { AIFormattedResponse } from '@/components/ai-formatted-response';
 import { usePersistedState } from '@/hooks/use-persisted-state';
-import { WhatsAppSendPanel } from '@/components/whatsapp-send-panel';
 
 export function ConversaoAssistant() {
   const genderOptions = ['Masculino', 'Feminino', 'Nao-binario', 'Prefere nao informar'];
@@ -31,13 +30,35 @@ export function ConversaoAssistant() {
   const [output, setOutput] = usePersistedState<string | null>('renovafit:conversao:output', null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (!loading) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [loading]);
 
   const handleChange = (field: keyof LeadProfile, value: string) => {
     setLead((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleGenerate = async () => {
+    if (loading) {
+      return;
+    }
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     setLoading(true);
+    setElapsedSeconds(0);
     setError(null);
     setOutput(null);
 
@@ -46,6 +67,7 @@ export function ConversaoAssistant() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'initial', lead }),
+        signal: abortController.signal,
       });
 
       const result = await response.json();
@@ -56,10 +78,19 @@ export function ConversaoAssistant() {
 
       setOutput(result.data.messages[0]);
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Geracao interrompida.');
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
       setLoading(false);
+      abortControllerRef.current = null;
     }
+  };
+
+  const handleCancelGeneration = () => {
+    abortControllerRef.current?.abort();
   };
 
   return (
@@ -147,6 +178,23 @@ export function ConversaoAssistant() {
         >
           {loading ? 'Gerando...' : 'Gerar Estratégia com Gemini'}
         </button>
+
+        {loading && (
+          <div className="rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 text-cyan-200">
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-cyan-300 border-t-transparent" />
+                <span className="text-sm">Gerando resposta... {elapsedSeconds}s</span>
+              </div>
+              <button
+                onClick={handleCancelGeneration}
+                className="rounded-md border border-cyan-300/30 bg-slate-900 px-3 py-1 text-xs font-semibold text-cyan-200 hover:bg-slate-800"
+              >
+                Interromper
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Output */}
@@ -170,11 +218,6 @@ export function ConversaoAssistant() {
               📋 Copiar Resposta
             </button>
 
-            <WhatsAppSendPanel
-              message={output}
-              storageKey="renovafit:conversao"
-              accentClassName="text-cyan-300"
-            />
           </div>
         )}
 
