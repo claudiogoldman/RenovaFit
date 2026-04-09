@@ -41,3 +41,16 @@ export type AIResponse = {
   nextAction: string;
   diagnosticQuestions: string[];
 };
+
+export type RenewalStatus = 'ativo' | 'sumido' | 'critico' | 'renovado';
+
+export type RenewalItem = {
+  id: string;
+  name: string;
+  plan: string;
+  status: RenewalStatus;
+  renewalDate: string;
+  lastContact: string;
+  owner: string;
+  notes: string;
+};

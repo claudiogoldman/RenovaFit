@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { RetencaoAssistant } from '@/components/retencao-assistant';
+import { RetencaoRenewalList } from '@/components/retencao-renewal-list';
 
 export const metadata: Metadata = {
   title: 'Retenção de Alunos | RenovaFit',
@@ -51,6 +52,7 @@ export default function RetencaoPage() {
         </div>
 
         <RetencaoAssistant />
+        <RetencaoRenewalList />
       </div>
     </div>
   );
