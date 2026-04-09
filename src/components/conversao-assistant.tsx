@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { LeadProfile } from '@/lib/types';
+import { AIFormattedResponse } from '@/components/ai-formatted-response';
 
 export function ConversaoAssistant() {
   const [lead, setLead] = useState<LeadProfile>({
@@ -118,9 +119,7 @@ export function ConversaoAssistant() {
 
         {output && (
           <div className="rounded-lg border border-cyan-400/20 bg-slate-900/50 p-6">
-            <div className="prose prose-invert max-w-none">
-              <p className="whitespace-pre-wrap text-slate-200">{output}</p>
-            </div>
+            <AIFormattedResponse content={output} />
 
             <button
               onClick={() => navigator.clipboard.writeText(output)}

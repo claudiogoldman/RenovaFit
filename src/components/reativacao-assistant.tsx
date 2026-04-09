@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { ExStudentProfile } from '@/lib/types';
+import { AIFormattedResponse } from '@/components/ai-formatted-response';
 
 export function ReativacaoAssistant() {
   const [exStudent, setExStudent] = useState<ExStudentProfile>({
@@ -117,9 +118,7 @@ export function ReativacaoAssistant() {
 
         {output && (
           <div className="rounded-lg border border-purple-400/20 bg-slate-900/50 p-6">
-            <div className="prose prose-invert max-w-none">
-              <p className="whitespace-pre-wrap text-slate-200">{output}</p>
-            </div>
+            <AIFormattedResponse content={output} />
 
             <button
               onClick={() => navigator.clipboard.writeText(output)}

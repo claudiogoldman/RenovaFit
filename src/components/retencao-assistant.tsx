@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import type { StudentProfile } from '@/lib/types';
+import type { RetencaoStrategyStyle } from '@/lib/prompts-retencao';
+import { AIFormattedResponse } from '@/components/ai-formatted-response';
 
 export function RetencaoAssistant() {
   const [student, setStudent] = useState<StudentProfile>({
@@ -18,6 +20,7 @@ export function RetencaoAssistant() {
   const [output, setOutput] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [strategyStyle, setStrategyStyle] = useState<RetencaoStrategyStyle>('executivo');
 
   const handleChange = (field: keyof StudentProfile, value: string) => {
     setStudent((prev) => ({ ...prev, [field]: value }));
@@ -32,7 +35,7 @@ export function RetencaoAssistant() {
       const response = await fetch('/api/retencao', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'strategy', student }),
+        body: JSON.stringify({ action: 'strategy', student, strategyStyle }),
       });
 
       const result = await response.json();
@@ -56,6 +59,18 @@ export function RetencaoAssistant() {
         <h2 className="text-2xl font-bold text-emerald-400">📋 Perfil do Aluno</h2>
 
         <div className="space-y-4">
+          <label className="flex flex-col gap-2 text-sm text-slate-200">
+            Estilo da Estratégia
+            <select
+              value={strategyStyle}
+              onChange={(e) => setStrategyStyle(e.target.value as RetencaoStrategyStyle)}
+              className="rounded-lg border border-emerald-400/20 bg-slate-900 px-4 py-2 text-white focus:border-emerald-400 focus:outline-none"
+            >
+              <option value="executivo">Executivo (curto e acionável)</option>
+              <option value="detalhado">Detalhado (consultivo completo)</option>
+            </select>
+          </label>
+
           {[
             { key: 'name' as const, label: 'Nome', placeholder: 'Ex.: Mariana' },
             { key: 'age' as const, label: 'Idade', placeholder: 'Ex.: 34' },
@@ -120,9 +135,7 @@ export function RetencaoAssistant() {
 
         {output && (
           <div className="rounded-lg border border-emerald-400/20 bg-slate-900/50 p-6">
-            <div className="prose prose-invert max-w-none">
-              <p className="whitespace-pre-wrap text-slate-200">{output}</p>
-            </div>
+            <AIFormattedResponse content={output} />
 
             <button
               onClick={() => navigator.clipboard.writeText(output)}
