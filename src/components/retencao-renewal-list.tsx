@@ -5,6 +5,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { HistoricoContatoItem, RenewalItem, RenewalStatus } from '@/lib/types';
 import { usePersistedState } from '@/hooks/use-persisted-state';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { getAppUrl } from '@/lib/app-url';
 import { isValidPhone, normalizePhone } from '@/lib/whatsapp';
 
 const STATUS_OPTIONS: Array<{ value: RenewalStatus; label: string }> = [
@@ -427,7 +428,10 @@ export function RetencaoRenewalList() {
                     const { error: signUpError } = await supabase.auth.signUp({
                       email,
                       password,
-                      options: { data: { full_name: fullName, team } },
+                        options: {
+                          data: { full_name: fullName, team },
+                          emailRedirectTo: `${getAppUrl()}/auth/callback`,
+                        },
                     });
                     if (signUpError) throw signUpError;
                     setAuthError('Conta criada. Verifique seu email para confirmar cadastro, se solicitado.');
