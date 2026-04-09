@@ -132,7 +132,7 @@ src/
 
 ## 📝 Modelos de IA
 
-Cada módulo usa prompts personalizados com o modelo **Gemini 2.5 Flash**:
+Cada módulo usa prompts personalizados com **Gemini 2.5 Flash** e fallback automático para **Gemini 2.0 Flash** em caso de alta demanda:
 
 **Conversão** (Lead → Aluno)
 - Perguntas diagnósticas para descobrir objetivos
