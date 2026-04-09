@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateContent } from '@/lib/gemini';
+import { mapGeminiError } from '@/lib/gemini-error';
 import {
   buildReativacaoPrompt,
   buildObjectionReativacaoPrompt,
@@ -46,12 +47,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, data: response });
   } catch (error) {
     console.error('Erro em /api/reativacao:', error);
+    const mapped = mapGeminiError(error, 'Erro ao gerar estratégia de reativação');
     return NextResponse.json(
       {
-        error: 'Erro ao gerar estratégia de reativação',
-        details: error instanceof Error ? error.message : 'Erro desconhecido',
+        error: mapped.error,
+        details: mapped.details,
       },
-      { status: 500 },
+      { status: mapped.status },
     );
   }
 }
