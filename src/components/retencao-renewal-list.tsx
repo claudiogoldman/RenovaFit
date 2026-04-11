@@ -102,6 +102,7 @@ export function RetencaoRenewalList() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [loadingList, setLoadingList] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [deletingHistoryById, setDeletingHistoryById] = useState<Record<string, boolean>>({});
   const [sendingWhatsAppById, setSendingWhatsAppById] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = usePersistedState<string>('renovafit:retencao:lista:search', '');
@@ -372,6 +373,33 @@ export function RetencaoRenewalList() {
       void loadHistory();
     } finally {
       setSendingWhatsAppById((prev) => ({ ...prev, [item.id]: false }));
+    }
+  };
+
+  const handleDeleteHistory = async (historyId: string) => {
+    const confirmed = window.confirm('Excluir este item do historico de contatos?');
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingHistoryById((prev) => ({ ...prev, [historyId]: true }));
+    setError(null);
+
+    try {
+      const response = await fetchWithAuth(`/api/renewals/contact-history?id=${encodeURIComponent(historyId)}`, {
+        method: 'DELETE',
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.details || result.error || 'Erro ao excluir contato do historico');
+      }
+
+      setHistory((prev) => prev.filter((entry) => entry.id !== historyId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    } finally {
+      setDeletingHistoryById((prev) => ({ ...prev, [historyId]: false }));
     }
   };
 
@@ -689,17 +717,26 @@ export function RetencaoRenewalList() {
                   <p className="text-sm text-white">
                     <span className="font-semibold">{entry.alunoNome}</span> · {entry.telefone}
                   </p>
-                  <span
-                    className={`rounded-full border px-2 py-1 text-[11px] uppercase tracking-wide ${
-                      entry.statusEnvio === 'enviado'
-                        ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
-                        : entry.statusEnvio === 'manual'
-                          ? 'border-cyan-500/40 bg-cyan-500/20 text-cyan-300'
-                          : 'border-rose-500/40 bg-rose-500/20 text-rose-300'
-                    }`}
-                  >
-                    {entry.statusEnvio}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full border px-2 py-1 text-[11px] uppercase tracking-wide ${
+                        entry.statusEnvio === 'enviado'
+                          ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
+                          : entry.statusEnvio === 'manual'
+                            ? 'border-cyan-500/40 bg-cyan-500/20 text-cyan-300'
+                            : 'border-rose-500/40 bg-rose-500/20 text-rose-300'
+                      }`}
+                    >
+                      {entry.statusEnvio}
+                    </span>
+                    <button
+                      onClick={() => void handleDeleteHistory(entry.id)}
+                      disabled={Boolean(deletingHistoryById[entry.id])}
+                      className="rounded border border-rose-500/40 px-2 py-1 text-[11px] text-rose-300 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {deletingHistoryById[entry.id] ? 'Excluindo...' : 'Excluir'}
+                    </button>
+                  </div>
                 </div>
                 <p className="mt-1 text-xs text-slate-400">
                   {formatSentAt(entry.createdAt)} · {entry.canal} · {entry.tipoContato} · por {entry.owner || 'Atendente'}

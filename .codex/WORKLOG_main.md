@@ -25,10 +25,8 @@
 Manter o fluxo Copilot + Codex sincronizado, com handoff claro e sem conflitos.
 
 ## Arquivos em edicao (lock)
-- **Copilot** (feat/history-delete-filter):
-  - `src/app/api/renewals/contact-history/route.ts`
-  - `src/lib/contact-history.ts`
-  - `src/components/retencao/RetencaoPageClient.tsx`
+- **Copilot** (feat/history-panel-delete):
+  - `src/components/retencao-renewal-list.tsx`
 
 ## Checklist da tarefa atual
 - [x] Versionar template de rotina Codex/Copilot
