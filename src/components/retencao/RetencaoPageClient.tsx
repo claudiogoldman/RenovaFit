@@ -291,10 +291,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
         }),
       })
       if (via === 'whatsapp') setSentMsgIds((prev) => new Set(prev).add(msgId))
-      // Refresh history
-      const r = await authFetch('/api/renewals/contact-history?limit=20')
-      const d = await r.json()
-      if (d.success && Array.isArray(d.data)) setContactHistory(d.data as HistoricoContatoItem[])
+      await loadHistory()
     } catch {
       // silent — copy still worked
     } finally {
@@ -306,6 +303,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
   const [contactHistory, setContactHistory] = useState<HistoricoContatoItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+  const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null)
 
   // AI state
   const [output, setOutput] = useState<string | null>(null)
@@ -325,32 +323,48 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
       .finally(() => setConfigLoaded(true))
   }, [])
 
-  useEffect(() => {
-    let active = true
+  const loadHistory = useCallback(async () => {
     setHistoryLoading(true)
     setHistoryError(null)
-
-    authFetch('/api/renewals/contact-history?limit=20')
-      .then((r) => r.json())
-      .then((data) => {
-        if (!active) return
-        if (data.success && Array.isArray(data.data)) {
-          setContactHistory(data.data as HistoricoContatoItem[])
-          return
-        }
-        setHistoryError(data.error || 'Nao foi possivel carregar o historico')
-      })
-      .catch(() => {
-        if (active) setHistoryError('Nao foi possivel carregar o historico')
-      })
-      .finally(() => {
-        if (active) setHistoryLoading(false)
-      })
-
-    return () => {
-      active = false
+    try {
+      const r = await authFetch('/api/renewals/contact-history?limit=20')
+      const data = await r.json()
+      if (data.success && Array.isArray(data.data)) {
+        setContactHistory(data.data as HistoricoContatoItem[])
+        return
+      }
+      setHistoryError(data.error || 'Nao foi possivel carregar o historico')
+    } catch {
+      setHistoryError('Nao foi possivel carregar o historico')
+    } finally {
+      setHistoryLoading(false)
     }
   }, [authFetch])
+
+  async function handleDeleteHistory(id: string) {
+    const confirmed = window.confirm('Excluir este item do historico de contatos?')
+    if (!confirmed) return
+    setDeletingHistoryId(id)
+    setHistoryError(null)
+    try {
+      const res = await authFetch(`/api/renewals/contact-history?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Nao foi possivel excluir este contato')
+      }
+      setContactHistory((prev) => prev.filter((item) => item.id !== id))
+    } catch (err) {
+      setHistoryError(err instanceof Error ? err.message : 'Nao foi possivel excluir este contato')
+    } finally {
+      setDeletingHistoryId(null)
+    }
+  }
+
+  useEffect(() => {
+    void loadHistory()
+  }, [loadHistory])
 
   // Pre-load student from ?alunoId query param
   useEffect(() => {
@@ -807,9 +821,14 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                     )}
 
                     <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-4">
-                      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-200 mb-3">
-                        Historico do Contato
-                      </h3>
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-200">
+                          Historico do Contato
+                        </h3>
+                        <span className="text-[11px] rounded-full border border-slate-700 bg-slate-950/70 px-2 py-0.5 text-slate-400">
+                          {selectedAlunoId ? 'Filtro: aluno selecionado' : 'Filtro: todos os alunos'}
+                        </span>
+                      </div>
 
                       {historyLoading ? (
                         <p className="text-sm text-slate-400">Carregando historico...</p>
@@ -827,7 +846,16 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                             <div key={item.id} className="rounded-md border border-slate-700 bg-slate-950/60 p-3">
                               <div className="flex items-center justify-between gap-2 mb-1">
                                 <p className="text-xs font-semibold text-slate-200">{item.alunoNome}</p>
-                                <p className="text-[11px] text-slate-400">{formatDateTime(item.createdAt)}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-[11px] text-slate-400">{formatDateTime(item.createdAt)}</p>
+                                  <button
+                                    onClick={() => void handleDeleteHistory(item.id)}
+                                    disabled={deletingHistoryId === item.id}
+                                    className="text-[11px] text-red-300 hover:text-red-200 border border-red-500/30 rounded px-1.5 py-0.5 disabled:opacity-50"
+                                  >
+                                    {deletingHistoryId === item.id ? 'Excluindo...' : 'Excluir'}
+                                  </button>
+                                </div>
                               </div>
                               <p className="text-[11px] text-slate-400 mb-1">
                                 {mapTipoContatoLabel(item.tipoContato)} • {item.canal}
