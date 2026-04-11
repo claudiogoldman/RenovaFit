@@ -144,7 +144,7 @@ export default function ComoUsarPage() {
           <Arrow />
           <Box id="d6" title="/admin/usuarios" sub="Cria admins de filial" color="purple" />
           <Arrow />
-          <Box id="d7" title="/admin/whatsapp" sub="Conecta WhatsApp" color="purple" />
+          <Box id="d7" title="/admin/config" sub="APIs: IA + WhatsApp" color="purple" />
         </Row>
         <Detail id="d4">
           <strong className="text-gray-800">Empresas:</strong> nome da rede, slug único, logo. Ex: &quot;Engenharia do Corpo&quot;.
@@ -156,7 +156,7 @@ export default function ComoUsarPage() {
           <strong className="text-gray-800">Usuários:</strong> email, nome, papel (branch_admin / attendant / viewer) e filial. O sistema envia convite pelo Supabase Auth.
         </Detail>
         <Detail id="d7">
-          <strong className="text-gray-800">WhatsApp:</strong> fluxo Embedded Signup da Meta. Token salvo por filial — cada uma usa seu próprio número Business.
+          <strong className="text-gray-800">Integrações (/admin/configuracoes):</strong> cada usuário cadastra suas próprias chaves de API. Provedor de IA: Gemini ou OpenRouter (com modelo customizável). WhatsApp: Access Token, Phone Number ID e Business Account ID da Meta. Sem essas chaves, o sistema usa o fallback local.
         </Detail>
 
         <Divider />
@@ -196,7 +196,7 @@ export default function ComoUsarPage() {
           <Arrow />
           <Box id="d14" title="Completa o perfil" sub="Idade, objetivo, rotina" color="amber" />
           <Arrow />
-          <Box id="d15" title="Gera estratégia IA" sub="4 versões de mensagem" color="amber" />
+          <Box id="d15" title="Gera estratégia IA" sub="6 seções estruturadas" color="amber" />
         </Row>
         <Detail id="d12">
           <strong className="text-gray-800">Lista filtrada:</strong> o atendente vê apenas os alunos da sua filial. Filtra por status, plano e busca por nome.
@@ -205,15 +205,17 @@ export default function ComoUsarPage() {
           <strong className="text-gray-800">Auto-preenchimento:</strong> nome, plano, status e notas já vêm da lista. Atendente completa apenas o que a IA precisa para personalizar.
         </Detail>
         <Detail id="d14">
-          <strong className="text-gray-800">Campos manuais:</strong> idade, sexo, objetivo (emagrecer, hipertrofia, saúde), filhos, rotina atual. Mais detalhes = mensagem mais personalizada.
+          <strong className="text-gray-800">Campos manuais:</strong> idade, sexo, objetivo (emagrecer, hipertrofia, saúde), filhos (select: Não / Sim 1 / Sim 2 / Sim 3 / Sim +3), rotina atual. Mais detalhes = estratégia mais personalizada.
         </Detail>
         <Detail id="d15">
-          <strong className="text-gray-800">Resultado:</strong> IA gera 4 versões — primeira abordagem, follow-up, direta e consultiva. Mais respostas para objeções (preço, tempo, desmotivação).
+          <strong className="text-gray-800">Resultado em 6 seções:</strong> (1) Resumo do Perfil — contexto do aluno; (2) Mensagens Prontas — textos prontos para enviar; (3) Respostas a Objeções — preço, tempo, desmotivação; (4) Próximo Passo — ação concreta recomendada; (5) Gatilhos — o que motiva esse aluno; (6) Histórico do Contato — resumo dos últimos contatos. Cada seção aparece em card separado. O botão ⚙ permite configurar quais seções e qual tom usar.
         </Detail>
 
         <div className="mt-3">
           <Row>
-            <Box id="d16" title="Escolhe a mensagem" sub="Copia ou envia direto" color="amber" />
+            <Box id="d16" title="Mensagens Prontas" sub="Copia da seção 2" color="amber" />
+            <Arrow />
+            <Box id="d16b" title="Histórico visível" sub="Painel lateral" color="gray" />
             <Arrow />
             <Box id="d17" title="Envia via WhatsApp" sub="API da Meta" color="green" />
             <Arrow />
@@ -222,7 +224,10 @@ export default function ComoUsarPage() {
             <Box id="d19" title="Aluno renovado" sub="Status atualizado" color="green" />
           </Row>
           <Detail id="d16">
-            <strong className="text-gray-800">Escolha:</strong> atendente lê as 4 versões e escolhe a mais adequada. Pode editar o texto antes de enviar.
+            <strong className="text-gray-800">Seção &quot;Mensagens Prontas&quot;:</strong> exibe textos prontos gerados pela IA. Atendente copia o mais adequado e pode editar antes de enviar. Outras seções (Objeções, Gatilhos) servem como apoio durante a conversa.
+          </Detail>
+          <Detail id="d16b">
+            <strong className="text-gray-800">Histórico de contatos:</strong> painel abaixo da estratégia mostra os últimos 20 contatos do aluno selecionado — data, canal, responsável e texto. Evita abordar o aluno com a mesma mensagem.
           </Detail>
           <Detail id="d17">
             <strong className="text-gray-800">Envio:</strong> usa o número Business da filial configurado. Mensagem vai da conta da academia, não de número pessoal.
