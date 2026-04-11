@@ -8,7 +8,6 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/image/logo/favicon_renovafit.png', type: 'image/png' },
-      { url: '/image/logo/logo-renovafit.png', type: 'image/png' },
     ],
     shortcut: ['/image/logo/favicon_renovafit.png'],
     apple: [{ url: '/image/logo/favicon_renovafit.png' }],

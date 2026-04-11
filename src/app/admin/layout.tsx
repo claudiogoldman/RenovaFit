@@ -1,5 +1,4 @@
 import { ReactNode } from 'react';
-import { AppLogo } from '@/components/layout/AppLogo';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
@@ -9,8 +8,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <div className="flex justify-between items-center min-h-16 py-2">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2 shrink-0">
-                <AppLogo size="sm" />
-                <h1 className="text-lg font-bold text-gray-900 leading-none">Admin</h1>
+                <h1 className="text-lg font-bold text-gray-900 leading-none">RenovaFit Admin</h1>
               </div>
               <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                 <a

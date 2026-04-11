@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { getAppUrl } from '@/lib/app-url';
-import { AppLogo } from '@/components/layout/AppLogo';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -110,8 +109,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 to-slate-900 px-6">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <AppLogo size="lg" className="mb-12" priority />
+        <h1 className="mb-10 text-4xl font-extrabold tracking-tight text-white">RenovaFit</h1>
 
         {/* Form Container */}
         <form onSubmit={handleSubmit} className="space-y-6">
