@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { carregarHistoricoContatos } from '@/lib/contact-history';
 import { getAuthenticatedUser } from '@/lib/supabase-auth';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const limitParam = Number(request.nextUrl.searchParams.get('limit') || '12');
     const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 50) : 12;
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const data = await carregarHistoricoContatos(supabase, user.id, limit);
 
     return NextResponse.json({ success: true, data });

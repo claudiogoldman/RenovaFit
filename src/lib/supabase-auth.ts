@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/supabase-server';
 
 export async function getAuthenticatedUser(request: NextRequest) {
   const authHeader = request.headers.get('authorization') || '';
@@ -12,7 +12,7 @@ export async function getAuthenticatedUser(request: NextRequest) {
     throw new Error('Invalid bearer token');
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase.auth.getUser(token);
 
   if (error || !data.user) {

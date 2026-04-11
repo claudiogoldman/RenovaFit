@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { requireRole } from '@/lib/auth/getProfile';
 
 export async function GET(request: NextRequest) {
   try {
     const profile = await requireRole(request, ['super_admin', 'branch_admin']);
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     let query = supabase
       .from('profiles')
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     // Criar usuário via Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
@@ -93,7 +93,7 @@ export async function PATCH(request: NextRequest) {
     const profile = await requireRole(request, ['super_admin', 'branch_admin']);
     const { user_id, role, active } = await request.json();
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     // Validar permissão
     if (profile.role === 'branch_admin') {
@@ -133,7 +133,7 @@ export async function DELETE(request: NextRequest) {
     const profile = await requireRole(request, ['super_admin', 'branch_admin']);
     const { user_id } = await request.json();
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     // Validar permissão
     if (profile.role === 'branch_admin') {

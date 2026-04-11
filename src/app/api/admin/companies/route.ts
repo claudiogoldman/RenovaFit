@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { requireRole } from '@/lib/auth/getProfile';
 
 export async function GET(request: NextRequest) {
   try {
     await requireRole(request, ['super_admin']);
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     const { data, count, error } = await supabase
       .from('companies')
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     await requireRole(request, ['super_admin']);
     const { name, slug, logo_url } = await request.json();
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     const { data, error } = await supabase
       .from('companies')
@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest) {
     await requireRole(request, ['super_admin']);
     const { company_id, name, slug, logo_url, active } = await request.json();
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const { error } = await supabase
       .from('companies')
       .update({ name, slug, logo_url, active })

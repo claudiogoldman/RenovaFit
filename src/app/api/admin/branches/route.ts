@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { requireRole } from '@/lib/auth/getProfile';
 
 export async function GET(request: NextRequest) {
   try {
     const userProfile = await requireRole(request, ['super_admin', 'branch_admin', 'attendant', 'viewer']);
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     let query = supabase
       .from('branches')
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     await requireRole(request, ['super_admin']);
     const { company_id, name, city, state, phone } = await request.json();
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     const { data, error } = await supabase
       .from('branches')
@@ -75,7 +75,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const { error } = await supabase
       .from('branches')
       .update({ name, city, state, phone, active })
@@ -98,7 +98,7 @@ export async function DELETE(request: NextRequest) {
     await requireRole(request, ['super_admin']);
     const { branch_id } = await request.json();
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     // Soft delete: setar active = false
     const { error } = await supabase
       .from('branches')

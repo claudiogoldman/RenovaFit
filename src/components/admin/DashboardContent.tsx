@@ -1,47 +1,36 @@
-'use client';
-import { useEffect, useState } from 'react';
+import { redirect } from 'next/navigation';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { Branch } from '@/lib/types/multitenancy';
 
-export function DashboardContent() {
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalCompanies: 0,
-    totalBranches: 0,
-    totalUsers: 0,
-  });
+export async function DashboardContent() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [branchesRes, companiesRes] = await Promise.all([
-          fetch('/api/admin/branches'),
-          fetch('/api/admin/companies'),
-        ]);
-
-        if (branchesRes.ok) {
-          const data = await branchesRes.json();
-          setBranches(data.data || []);
-          setStats((prev) => ({ ...prev, totalBranches: data.count || 0 }));
-        }
-
-        if (companiesRes.ok) {
-          const data = await companiesRes.json();
-          setStats((prev) => ({ ...prev, totalCompanies: data.count || 0 }));
-        }
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadData();
-  }, []);
-
-  if (loading) {
-    return <div className="text-center py-12">Carregando...</div>;
+  if (!user) {
+    redirect('/login');
   }
+
+  const [branchesResult, companiesResult, usersResult] = await Promise.all([
+    supabase
+      .from('branches')
+      .select('id, name, city, state, active', { count: 'exact' })
+      .order('name'),
+    supabase.from('companies').select('id', { count: 'exact' }),
+    supabase.from('profiles').select('id', { count: 'exact' }),
+  ]);
+
+  if (branchesResult.error) throw new Error(branchesResult.error.message);
+  if (companiesResult.error) throw new Error(companiesResult.error.message);
+  if (usersResult.error) throw new Error(usersResult.error.message);
+
+  const branches: Branch[] = (branchesResult.data || []) as Branch[];
+  const stats = {
+    totalCompanies: companiesResult.count || 0,
+    totalBranches: branchesResult.count || 0,
+    totalUsers: usersResult.count || 0,
+  };
 
   return (
     <div className="space-y-8">

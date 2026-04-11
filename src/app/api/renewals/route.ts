@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { getAuthenticatedUser } from '@/lib/supabase-auth';
 import { normalizePhone } from '@/lib/whatsapp';
 import type { RenewalItem, RenewalStatus } from '@/lib/types';
@@ -35,7 +35,7 @@ function mapRowToItem(row: RenewalRow): RenewalItem {
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthenticatedUser(request);
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from('renewal_items')
       .select('id,name,telefone,plan,status,renewal_date,last_contact,owner,owner_id,notes,created_at')
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const payload = {
       name: body.name,
       telefone: body.telefone ? normalizePhone(body.telefone) : null,

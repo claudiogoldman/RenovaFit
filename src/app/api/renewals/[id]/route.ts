@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { getAuthenticatedUser } from '@/lib/supabase-auth';
 import { registrarHistoricoContato } from '@/lib/contact-history';
 import { normalizePhone } from '@/lib/whatsapp';
@@ -34,7 +34,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Nada para atualizar' }, { status: 400 });
     }
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const { data: renewal, error: renewalError } = await supabase
       .from('renewal_items')
       .select('id,name,telefone,status,owner')
@@ -126,7 +126,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'ID nao informado' }, { status: 400 });
     }
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const { error } = await supabase
       .from('renewal_items')
       .delete()

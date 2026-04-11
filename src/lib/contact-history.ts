@@ -1,4 +1,4 @@
-import type { createSupabaseServerClient } from '@/lib/supabase-server';
+import type { createSupabaseAdminClient } from '@/lib/supabase-server';
 import type {
   HistoricoContatoCanal,
   HistoricoContatoItem,
@@ -6,7 +6,7 @@ import type {
   HistoricoContatoTipo,
 } from '@/lib/types';
 
-type SupabaseClient = ReturnType<typeof createSupabaseServerClient>;
+type SupabaseClient = ReturnType<typeof createSupabaseAdminClient>;
 
 type HistoricoContatoRow = {
   id: string;

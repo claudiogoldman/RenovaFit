@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { getAuthenticatedUser } from '@/lib/supabase-auth';
 import { registrarHistoricoContato } from '@/lib/contact-history';
 import { isValidPhone, normalizePhone, sendWhatsAppTextMessage } from '@/lib/whatsapp';
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       tipoContato?: 'primeiro_contato' | 'followup' | 'resposta' | 'observacao';
     };
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     const { data: renewalData, error: renewalError } = await supabase
       .from('renewal_items')
