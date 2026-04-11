@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
@@ -19,21 +19,6 @@ export default function LoginPage() {
       return null;
     }
   }, []);
-
-  useEffect(() => {
-    if (!supabase) return;
-
-    let active = true;
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (active && session) {
-        router.replace('/admin');
-      }
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [router, supabase]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
