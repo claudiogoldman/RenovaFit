@@ -209,6 +209,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
   const [student, setStudent] = useState<StudentProfile>(EMPTY_STUDENT)
   const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(null)
   const [renewalDate, setRenewalDate] = useState('')
+  const [formCollapsed, setFormCollapsed] = useState(false)
 
   // Contact history
   const [contactHistory, setContactHistory] = useState<HistoricoContatoItem[]>([])
@@ -430,11 +431,19 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
             <div className="flex gap-6 items-start">
               {/* Main content */}
               <div className="flex-1 min-w-0">
-                <div className="grid gap-8 lg:grid-cols-2">
+                <div className={`grid gap-8 ${formCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-2'}`}>
                   {/* Form */}
+                  {!formCollapsed && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h2 className="text-xl font-bold text-emerald-400">📋 Perfil do Aluno</h2>
+                      <button
+                        onClick={() => setFormCollapsed(true)}
+                        className="text-xs text-slate-400 hover:text-slate-200 border border-slate-700 rounded px-2 py-1 transition-colors"
+                        title="Recolher formulário"
+                      >
+                        ▲ Recolher
+                      </button>
                     </div>
 
                     <div className="space-y-3">
@@ -620,9 +629,22 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                     )}
                   </div>
 
+                  )}
+
                   {/* AI Output */}
                   <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-purple-400">✨ Estratégia IA</h2>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-bold text-purple-400">✨ Estratégia IA</h2>
+                      {formCollapsed && (
+                        <button
+                          onClick={() => setFormCollapsed(false)}
+                          className="text-xs text-slate-400 hover:text-slate-200 border border-slate-700 rounded px-2 py-1 transition-colors"
+                          title="Expandir formulário"
+                        >
+                          ▼ Expandir formulário
+                        </button>
+                      )}
+                    </div>
                     {output ? (
                       <div className="space-y-3">
                         {strategySections.length > 0 ? (

@@ -5,7 +5,10 @@ import type { IntegrationConfigView, StrategyConfig } from '@/lib/types/multiten
 import { DEFAULT_INTEGRATION_CONFIG_VIEW, DEFAULT_STRATEGY_CONFIG } from '@/lib/types/multitenancy'
 import { StrategyConfigEditor } from '@/components/retencao/StrategyConfigEditor'
 
+type ConfigTab = 'estrategia' | 'integracoes'
+
 export default function ConfiguracoesPage() {
+  const [activeConfigTab, setActiveConfigTab] = useState<ConfigTab>('estrategia')
   const [config, setConfig] = useState<StrategyConfig>({ ...DEFAULT_STRATEGY_CONFIG } as StrategyConfig)
   const [strategyLoading, setStrategyLoading] = useState(true)
 
@@ -95,27 +98,51 @@ export default function ConfiguracoesPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="mb-8">
+    <div className="space-y-6">
+      <div>
         <h2 className="text-2xl font-bold text-gray-900">Configurações do Admin</h2>
         <p className="text-gray-500 mt-1">
           Configure estratégia e integrações da sua conta. Tudo salvo por usuário.
         </p>
       </div>
 
+      {/* Tab header */}
+      <div className="flex border-b border-gray-200">
+        {([
+          { id: 'estrategia' as ConfigTab, label: 'Estratégia de IA' },
+          { id: 'integracoes' as ConfigTab, label: 'Integrações de API' },
+        ]).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActiveConfigTab(t.id)}
+            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeConfigTab === t.id
+                ? 'border-slate-900 text-slate-900'
+                : 'border-transparent text-gray-400 hover:text-gray-700'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {strategyLoading ? (
         <div className="text-gray-400 text-sm">Carregando configurações...</div>
       ) : (
-        <div className="max-w-2xl space-y-8">
-          {/* Dark wrapper to match the config editor style */}
-          <div className="rounded-2xl bg-slate-900 p-6">
-            <h3 className="text-lg font-semibold text-white mb-1">Estratégia de IA</h3>
-            <p className="text-sm text-slate-400 mb-5">
-              Defina o que a IA deve gerar em cada análise de retenção.
-            </p>
-            <StrategyConfigEditor config={config} onChange={setConfig} autoSave={false} />
-          </div>
+        <div className="max-w-2xl">
+          {/* Tab: Estratégia de IA */}
+          {activeConfigTab === 'estrategia' && (
+            <div className="rounded-2xl bg-slate-900 p-6">
+              <h3 className="text-lg font-semibold text-white mb-1">Estratégia de IA</h3>
+              <p className="text-sm text-slate-400 mb-5">
+                Defina o que a IA deve gerar em cada análise de retenção.
+              </p>
+              <StrategyConfigEditor config={config} onChange={setConfig} autoSave={false} />
+            </div>
+          )}
 
+          {/* Tab: Integrações */}
+          {activeConfigTab === 'integracoes' && (
           <div className="rounded-2xl bg-slate-900 p-6 space-y-5">
             <div>
               <h3 className="text-lg font-semibold text-white mb-1">Integrações de API</h3>
@@ -273,6 +300,7 @@ export default function ConfiguracoesPage() {
               </>
             )}
           </div>
+          )}
         </div>
       )}
     </div>
