@@ -43,6 +43,53 @@ export interface UserWithProfile {
   profile: Profile;
 }
 
+export interface StrategyConfig {
+  id?: string
+  profile_id?: string
+  branch_id?: string
+
+  section_resumo: boolean
+  section_mensagens: boolean
+  section_objecoes: boolean
+  section_proximo_passo: boolean
+  section_gatilhos: boolean
+  section_historico: boolean
+
+  msg_primeira_abordagem: boolean
+  msg_followup: boolean
+  msg_direta: boolean
+  msg_consultiva: boolean
+
+  obj_preco: boolean
+  obj_tempo: boolean
+  obj_motivacao: boolean
+  obj_concorrencia: boolean
+  obj_saude: boolean
+
+  tom: 'executivo' | 'consultivo' | 'equilibrado'
+  contexto_adicional?: string
+}
+
+export const DEFAULT_STRATEGY_CONFIG: Omit<StrategyConfig, 'id' | 'profile_id'> = {
+  section_resumo: true,
+  section_mensagens: true,
+  section_objecoes: true,
+  section_proximo_passo: true,
+  section_gatilhos: false,
+  section_historico: true,
+  msg_primeira_abordagem: true,
+  msg_followup: true,
+  msg_direta: true,
+  msg_consultiva: true,
+  obj_preco: true,
+  obj_tempo: true,
+  obj_motivacao: true,
+  obj_concorrencia: false,
+  obj_saude: false,
+  tom: 'equilibrado',
+  contexto_adicional: '',
+}
+
 // Permissões por papel
 export const ROLE_PERMISSIONS: Record<
   UserRole,

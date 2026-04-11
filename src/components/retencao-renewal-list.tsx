@@ -60,7 +60,20 @@ function formatSentAt(value: string): string {
     return value;
   }
 
-  return date.toLocaleString('pt-BR');
+  const diffMs = Date.now() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays <= 0) {
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours <= 0) {
+      const diffMinutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+      return `há ${diffMinutes} min`;
+    }
+    return `há ${diffHours}h`;
+  }
+  if (diffDays === 1) {
+    return 'há 1 dia';
+  }
+  return `há ${diffDays} dias`;
 }
 
 function buildWhatsAppMessage(item: RenewalItem): string {
@@ -601,7 +614,19 @@ export function RetencaoRenewalList() {
                   </td>
                   <td className="px-4 py-3">
                     <p>{item.renewalDate || '-'}</p>
-                    {days !== null && <p className="text-xs text-slate-400">D{days >= 0 ? `-${days}` : `+${Math.abs(days)}`}</p>}
+                      {days !== null && (
+                        <span
+                          className={`inline-flex rounded-full border px-1.5 py-0.5 text-[11px] font-semibold mt-0.5 ${
+                            days <= 7
+                              ? 'bg-red-500/20 text-red-300 border-red-500/30'
+                              : days <= 30
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                          }`}
+                        >
+                          {days >= 0 ? `D-${days}` : `D+${Math.abs(days)}`}
+                        </span>
+                      )}
                     <p className="mt-1 text-xs text-slate-500">Ultimo: {formatSentAt(item.lastContact)}</p>
                   </td>
                   <td className="px-4 py-3">{item.owner || '-'}</td>
@@ -633,6 +658,12 @@ export function RetencaoRenewalList() {
                         Remover
                       </button>
                     </div>
+                      <a
+                        href={`/retencao?alunoId=${item.id}`}
+                        className="mt-2 inline-flex rounded border border-purple-500/30 px-2 py-1 text-xs text-purple-300 hover:bg-purple-500/10 transition-colors"
+                      >
+                        ✨ Gerar estratégia
+                      </a>
                   </td>
                 </tr>
               );

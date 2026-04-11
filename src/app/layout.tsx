@@ -5,6 +5,14 @@ export const metadata: Metadata = {
   title: 'RenovaFit - IA para Academias',
   description:
     'Ecossistema de IA para conversão, retenção e reativação de alunos em academias',
+  icons: {
+    icon: [
+      { url: '/image/logo/favicon_renovafit.png', type: 'image/png' },
+      { url: '/image/logo/logo-renovafit.png', type: 'image/png' },
+    ],
+    shortcut: ['/image/logo/favicon_renovafit.png'],
+    apple: [{ url: '/image/logo/favicon_renovafit.png' }],
+  },
 };
 
 export default function RootLayout({

@@ -14,9 +14,43 @@ type RenewalRow = {
   last_contact: string | null;
   owner: string | null;
   owner_id: string;
+  branch_id?: string | null;
+  company_id?: string | null;
   notes: string | null;
   created_at?: string;
 };
+
+type UserScope = {
+  branchId: string | null;
+  companyId: string | null;
+};
+
+async function getUserScope(supabase: ReturnType<typeof createSupabaseAdminClient>, userId: string): Promise<UserScope> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('branch_id,company_id')
+    .eq('id', userId)
+    .single();
+
+  return {
+    branchId: (profile?.branch_id as string | null | undefined) ?? null,
+    companyId: (profile?.company_id as string | null | undefined) ?? null,
+  };
+}
+
+function applyScopeFilter<T extends { eq: (col: string, val: string) => T }>(
+  query: T,
+  scope: UserScope,
+): T {
+  let scoped = query;
+  if (scope.companyId) {
+    scoped = scoped.eq('company_id', scope.companyId);
+  }
+  if (scope.branchId) {
+    scoped = scoped.eq('branch_id', scope.branchId);
+  }
+  return scoped;
+}
 
 function mapRowToItem(row: RenewalRow): RenewalItem {
   return {
@@ -36,11 +70,22 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getAuthenticatedUser(request);
     const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase
-      .from('renewal_items')
-      .select('id,name,telefone,plan,status,renewal_date,last_contact,owner,owner_id,notes,created_at')
-      .eq('owner_id', user.id)
-      .order('created_at', { ascending: false });
+      const scope = await getUserScope(supabase, user.id);
+      const { searchParams } = new URL(request.url);
+      const q = searchParams.get('q')?.trim();
+
+      let query = supabase
+        .from('renewal_items')
+        .select('id,name,telefone,plan,status,renewal_date,last_contact,owner,owner_id,notes,created_at')
+        .order('created_at', { ascending: false });
+
+      query = applyScopeFilter(query, scope);
+
+      if (q && q.length >= 2) {
+        query = query.ilike('name', `%${q}%`);
+      }
+
+      const { data, error } = q && q.length >= 2 ? await query.limit(10) : await query;
 
     if (error) {
       throw new Error(error.message);
@@ -76,12 +121,15 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createSupabaseAdminClient();
+    const scope = await getUserScope(supabase, user.id);
     const payload = {
       name: body.name,
       telefone: body.telefone ? normalizePhone(body.telefone) : null,
       plan: body.plan,
       status: body.status,
       owner_id: user.id,
+      branch_id: scope.branchId,
+      company_id: scope.companyId,
       owner:
         (user.user_metadata?.full_name as string | undefined) ||
         (user.email as string | undefined) ||

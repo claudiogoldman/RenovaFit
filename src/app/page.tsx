@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { AppLogo } from '@/components/layout/AppLogo';
 
 export const metadata: Metadata = {
   title: 'RenovaFit | IA para Retenção de Alunos',
@@ -23,9 +24,7 @@ export default async function Home() {
       {/* Header with login/signup buttons */}
       <div className="fixed top-0 left-0 right-0 border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="text-lg font-semibold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-            RenovaFit
-          </div>
+          <AppLogo size="md" priority />
           <div className="flex items-center gap-3">
             {user ? (
               <Link
@@ -56,9 +55,9 @@ export default async function Home() {
 
       <div className="max-w-4xl mx-auto px-6 pt-20">
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-            RenovaFit
-          </h1>
+          <div className="mb-4 flex justify-center">
+            <AppLogo size="lg" priority />
+          </div>
           <p className="text-xl text-slate-300">
             Ecossistema de IA para academias: Conversão, Retenção e Reativação
           </p>

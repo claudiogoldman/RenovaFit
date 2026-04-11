@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { AppLogo } from '@/components/layout/AppLogo'
 
 type DetailId = string | null
 
@@ -75,7 +76,7 @@ export default function ComoUsarPage() {
     <main className="min-h-screen bg-white">
       {/* Header */}
       <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="text-lg font-semibold text-gray-900">RenovaFit</Link>
+        <AppLogo size="md" priority />
         <Link
           href="/retencao"
           className="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"

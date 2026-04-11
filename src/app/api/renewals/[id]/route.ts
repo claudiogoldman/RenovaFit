@@ -17,6 +17,73 @@ type RenewalRow = {
   owner: string | null;
 };
 
+  type UserScope = {
+    branchId: string | null;
+    companyId: string | null;
+  };
+
+  async function getUserScope(supabase: ReturnType<typeof createSupabaseAdminClient>, userId: string): Promise<UserScope> {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('branch_id,company_id')
+      .eq('id', userId)
+      .single();
+
+    return {
+      branchId: (profile?.branch_id as string | null | undefined) ?? null,
+      companyId: (profile?.company_id as string | null | undefined) ?? null,
+    };
+  }
+
+export async function GET(request: NextRequest, context: RouteContext) {
+  try {
+    const user = await getAuthenticatedUser(request);
+    const { id } = await context.params;
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID nao informado' }, { status: 400 });
+    }
+
+    const supabase = createSupabaseAdminClient();
+    const scope = await getUserScope(supabase, user.id);
+    let query = supabase
+      .from('renewal_items')
+      .select('id,name,telefone,plan,status,renewal_date,last_contact,owner,owner_id,notes')
+      .eq('id', id);
+    if (scope.companyId) {
+      query = query.eq('company_id', scope.companyId);
+    }
+    if (scope.branchId) {
+      query = query.eq('branch_id', scope.branchId);
+    }
+    const { data, error } = await query.single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: 'Aluno nao encontrado' }, { status: 404 });
+    }
+
+    const row = data as { id: string; name: string; telefone: string | null; plan: string; status: RenewalStatus; renewal_date: string | null; last_contact: string | null; owner: string | null; notes: string | null };
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: row.id,
+        name: row.name,
+        telefone: row.telefone || '',
+        plan: row.plan,
+        status: row.status,
+        renewalDate: row.renewal_date || '',
+        lastContact: row.last_contact || '',
+        owner: row.owner || '',
+        notes: row.notes || '',
+      },
+    });
+  } catch (error) {
+    const details = error instanceof Error ? error.message : 'Erro desconhecido';
+    const status = /missing bearer token|unauthorized/i.test(details) ? 401 : 500;
+    return NextResponse.json({ error: 'Erro ao buscar aluno', details }, { status });
+  }
+}
+
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     const user = await getAuthenticatedUser(request);
@@ -35,12 +102,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const supabase = createSupabaseAdminClient();
-    const { data: renewal, error: renewalError } = await supabase
+    const scope = await getUserScope(supabase, user.id);
+    let renewalQuery = supabase
       .from('renewal_items')
       .select('id,name,telefone,status,owner')
-      .eq('id', id)
-      .eq('owner_id', user.id)
-      .single();
+      .eq('id', id);
+    if (scope.companyId) {
+      renewalQuery = renewalQuery.eq('company_id', scope.companyId);
+    }
+    if (scope.branchId) {
+      renewalQuery = renewalQuery.eq('branch_id', scope.branchId);
+    }
+    const { data: renewal, error: renewalError } = await renewalQuery.single();
 
     if (renewalError || !renewal) {
       throw new Error(renewalError?.message || 'Aluno nao encontrado');
@@ -57,11 +130,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updatePayload.telefone = body.telefone.trim() ? normalizePhone(body.telefone) : null;
     }
 
-    const { error } = await supabase
-      .from('renewal_items')
-      .update(updatePayload)
-      .eq('id', id)
-      .eq('owner_id', user.id);
+    let updateQuery = supabase.from('renewal_items').update(updatePayload).eq('id', id);
+    if (scope.companyId) {
+      updateQuery = updateQuery.eq('company_id', scope.companyId);
+    }
+    if (scope.branchId) {
+      updateQuery = updateQuery.eq('branch_id', scope.branchId);
+    }
+    const { error } = await updateQuery;
 
     if (error) {
       throw new Error(error.message);
@@ -127,11 +203,15 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     }
 
     const supabase = createSupabaseAdminClient();
-    const { error } = await supabase
-      .from('renewal_items')
-      .delete()
-      .eq('id', id)
-      .eq('owner_id', user.id);
+    const scope = await getUserScope(supabase, user.id);
+    let deleteQuery = supabase.from('renewal_items').delete().eq('id', id);
+    if (scope.companyId) {
+      deleteQuery = deleteQuery.eq('company_id', scope.companyId);
+    }
+    if (scope.branchId) {
+      deleteQuery = deleteQuery.eq('branch_id', scope.branchId);
+    }
+    const { error } = await deleteQuery;
 
     if (error) {
       throw new Error(error.message);
