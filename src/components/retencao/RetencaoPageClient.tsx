@@ -734,71 +734,73 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                     {output ? (
                       <div className="space-y-3">
                         {strategySections.length > 0 ? (
-                          strategySections.map((section) => {
-                            const isMensagens = section.title === 'Mensagens Prontas'
-                            const messages = isMensagens
-                              ? parseMessagesFromSection(section.content)
-                              : null
-                            return (
-                              <div
-                                key={section.title}
-                                className="rounded-lg border border-emerald-400/20 bg-slate-900/50 p-5"
-                              >
-                                <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-300 mb-3">
-                                  {section.title}
-                                </h3>
+                          <div className="grid gap-3 lg:grid-cols-2">
+                            {strategySections.map((section) => {
+                              const isMensagens = section.title === 'Mensagens Prontas'
+                              const messages = isMensagens
+                                ? parseMessagesFromSection(section.content)
+                                : null
+                              return (
+                                <div
+                                  key={section.title}
+                                  className="rounded-lg border border-emerald-400/20 bg-slate-900/50 p-5"
+                                >
+                                  <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-300 mb-3">
+                                    {section.title}
+                                  </h3>
 
-                                {isMensagens && messages ? (
-                                  <div className="space-y-3">
-                                    {messages.map((msg) => (
-                                      <div
-                                        key={msg.id}
-                                        className="rounded-lg border border-slate-700 bg-slate-950/60 p-4"
-                                      >
-                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
-                                          {msg.label}
-                                        </p>
-                                        <p className="text-sm text-slate-200 whitespace-pre-wrap mb-3">
-                                          {msg.text}
-                                        </p>
-                                        <div className="flex gap-2 flex-wrap">
-                                          <button
-                                            onClick={() => void handleMessageAction(msg.id, msg.text, 'copy')}
-                                            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                              copiedMsgId === msg.id
-                                                ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
-                                                : 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
-                                            }`}
-                                          >
-                                            {copiedMsgId === msg.id ? '✓ Copiado' : '📋 Copiar'}
-                                          </button>
-                                          {whatsappConfigured && selectedAlunoId && (
+                                  {isMensagens && messages ? (
+                                    <div className="space-y-3">
+                                      {messages.map((msg) => (
+                                        <div
+                                          key={msg.id}
+                                          className="rounded-lg border border-slate-700 bg-slate-950/60 p-4"
+                                        >
+                                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
+                                            {msg.label}
+                                          </p>
+                                          <p className="text-sm text-slate-200 whitespace-pre-wrap mb-3">
+                                            {msg.text}
+                                          </p>
+                                          <div className="flex gap-2 flex-wrap">
                                             <button
-                                              onClick={() => void handleMessageAction(msg.id, msg.text, 'whatsapp')}
-                                              disabled={sendingMsgId === msg.id}
-                                              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
-                                                sentMsgIds.has(msg.id)
-                                                  ? 'border-green-600 bg-green-500/20 text-green-300'
+                                              onClick={() => void handleMessageAction(msg.id, msg.text, 'copy')}
+                                              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                                copiedMsgId === msg.id
+                                                  ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
                                                   : 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
                                               }`}
                                             >
-                                              {sentMsgIds.has(msg.id)
-                                                ? '✓ Enviado'
-                                                : sendingMsgId === msg.id
-                                                  ? 'Enviando...'
-                                                  : '💬 Enviar WhatsApp'}
+                                              {copiedMsgId === msg.id ? '✓ Copiado' : '📋 Copiar'}
                                             </button>
-                                          )}
+                                            {whatsappConfigured && selectedAlunoId && (
+                                              <button
+                                                onClick={() => void handleMessageAction(msg.id, msg.text, 'whatsapp')}
+                                                disabled={sendingMsgId === msg.id}
+                                                className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                                                  sentMsgIds.has(msg.id)
+                                                    ? 'border-green-600 bg-green-500/20 text-green-300'
+                                                    : 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                                }`}
+                                              >
+                                                {sentMsgIds.has(msg.id)
+                                                  ? '✓ Enviado'
+                                                  : sendingMsgId === msg.id
+                                                    ? 'Enviando...'
+                                                    : '💬 Enviar WhatsApp'}
+                                              </button>
+                                            )}
+                                          </div>
                                         </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <AIFormattedResponse content={section.content} />
-                                )}
-                              </div>
-                            )
-                          })
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <AIFormattedResponse content={section.content} />
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
                         ) : (
                           <div className="rounded-lg border border-emerald-400/20 bg-slate-900/50 p-5">
                             <AIFormattedResponse content={output} />
