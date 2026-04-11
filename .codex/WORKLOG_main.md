@@ -25,8 +25,8 @@
 Manter o fluxo Copilot + Codex sincronizado, com handoff claro e sem conflitos.
 
 ## Arquivos em edicao (lock)
-- **Copilot** (feat/history-panel-delete):
-  - `src/components/retencao-renewal-list.tsx`
+- **Copilot** (feat/strategy-panels-grid):
+  - `src/components/retencao/RetencaoPageClient.tsx`
 
 ## Checklist da tarefa atual
 - [x] Versionar template de rotina Codex/Copilot
