@@ -359,34 +359,13 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
 
   return (
     <div className="min-h-screen bg-slate-950">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-widest text-emerald-400">
-              💚 Retenção
-            </span>
-            <h1 className="text-3xl font-bold text-white mt-1">Estratégia de Retenção</h1>
-          </div>
-          <div className="flex gap-3">
-            <a
-              href="/admin/renovacoes"
-              className="text-sm text-slate-400 hover:text-white border border-slate-700 rounded-lg px-3 py-2 transition-colors"
-            >
-              Lista de Alunos
-            </a>
-            {supabase && (
-              <button
-                onClick={async () => {
-                  await supabase.auth.signOut()
-                  window.location.href = '/login'
-                }}
-                className="text-sm text-slate-400 hover:text-white border border-slate-700 rounded-lg px-3 py-2 transition-colors"
-              >
-                Sair
-              </button>
-            )}
-          </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        {/* Page title */}
+        <div className="mb-6">
+          <span className="text-xs font-semibold uppercase tracking-widest text-emerald-400">
+            💚 Retenção
+          </span>
+          <h1 className="text-2xl font-bold text-white mt-1">Estratégia de Retenção</h1>
         </div>
 
         {/* Tabs */}
