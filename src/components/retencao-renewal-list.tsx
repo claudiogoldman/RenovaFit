@@ -364,117 +364,27 @@ export function RetencaoRenewalList() {
 
   return (
     <section className="mt-16 space-y-8">
-      {authUnavailable && (
-        <div className="rounded-lg border border-red-400/20 bg-red-900/20 p-4 text-sm text-red-200">
-          Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY no Vercel para ativar login da equipe.
-        </div>
-      )}
+      {/* Logout button */}
+      <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-3">
+        <p className="text-sm text-slate-300">
+          Logado como{' '}
+          <span className="font-semibold text-white">
+            {(session?.user.user_metadata?.full_name as string | undefined) || session?.user.email}
+          </span>
+          {session?.user.user_metadata?.team ? ` · Equipe: ${String(session.user.user_metadata.team)}` : ''}
+        </p>
+        <button
+          onClick={async () => {
+            if (!supabase) return;
+            await supabase.auth.signOut();
+            window.location.href = '/login';
+          }}
+          className="rounded border border-slate-600 px-3 py-1 text-xs text-slate-300 hover:bg-slate-800"
+        >
+          Sair
+        </button>
+      </div>
 
-      {!authUnavailable && !session && (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-white">Entrar na carteira de retencao</h3>
-            <button
-              onClick={() => setAuthMode((prev) => (prev === 'signin' ? 'signup' : 'signin'))}
-              className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
-            >
-              {authMode === 'signin' ? 'Criar conta' : 'Ja tenho conta'}
-            </button>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Senha"
-              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
-            />
-            {authMode === 'signup' && (
-              <>
-                <input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Nome do atendente"
-                  className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
-                />
-                <input
-                  value={team}
-                  onChange={(e) => setTeam(e.target.value)}
-                  placeholder="Equipe (opcional)"
-                  className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
-                />
-              </>
-            )}
-          </div>
-
-          <div className="mt-4 flex items-center gap-3">
-            <button
-              onClick={async () => {
-                if (!supabase) return;
-                setAuthError(null);
-                try {
-                  if (authMode === 'signin') {
-                    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-                    if (signInError) throw signInError;
-                  } else {
-                    const { error: signUpError } = await supabase.auth.signUp({
-                      email,
-                      password,
-                        options: {
-                          data: { full_name: fullName, team },
-                          emailRedirectTo: `${getAppUrl()}/auth/callback`,
-                        },
-                    });
-                    if (signUpError) throw signUpError;
-                    setAuthError('Conta criada. Verifique seu email para confirmar cadastro, se solicitado.');
-                  }
-                } catch (err) {
-                  setAuthError(err instanceof Error ? err.message : 'Erro de autenticacao');
-                }
-              }}
-              disabled={authLoading || !email || !password}
-              className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
-            >
-              {authMode === 'signin' ? 'Entrar' : 'Criar conta'}
-            </button>
-            {authLoading && <span className="text-xs text-slate-400">Carregando sessao...</span>}
-          </div>
-
-          {authError && <p className="mt-3 text-sm text-amber-300">{authError}</p>}
-        </div>
-      )}
-
-      {session && (
-        <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-3">
-          <p className="text-sm text-slate-300">
-            Logado como{' '}
-            <span className="font-semibold text-white">
-              {(session.user.user_metadata?.full_name as string | undefined) || session.user.email}
-            </span>
-            {session.user.user_metadata?.team ? ` · Equipe: ${String(session.user.user_metadata.team)}` : ''}
-          </p>
-          <button
-            onClick={async () => {
-              if (!supabase) return;
-              await supabase.auth.signOut();
-            }}
-            className="rounded border border-slate-600 px-3 py-1 text-xs text-slate-300 hover:bg-slate-800"
-          >
-            Sair
-          </button>
-        </div>
-      )}
-
-      {!session ? null : (
-        <>
       <div>
         <h2 className="text-3xl font-bold text-white">Lista de Renovacao</h2>
         <p className="mt-2 text-slate-400">Controle operacional da carteira com filtros, prioridade e atualizacao rapida de status.</p>
@@ -770,8 +680,6 @@ export function RetencaoRenewalList() {
           </ul>
         )}
       </div>
-        </>
-      )}
     </section>
   );
 }

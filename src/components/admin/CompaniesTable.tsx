@@ -1,7 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Company } from '@/lib/types/multitenancy';
 import { CompanyForm } from './CompanyForm';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 export function CompaniesTable() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -9,10 +10,23 @@ export function CompaniesTable() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const supabase = useMemo(() => {
+    try {
+      return createSupabaseBrowserClient();
+    } catch {
+      return null;
+    }
+  }, []);
+
   const loadCompanies = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/companies');
+      const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+      const token = session?.access_token;
+
+      const res = await fetch('/api/admin/companies', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
       if (res.ok) {
         const data = await res.json();
         setCompanies(data.data || []);
@@ -31,9 +45,15 @@ export function CompaniesTable() {
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja deletar esta empresa?')) {
       try {
+        const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+        const token = session?.access_token;
+
         const res = await fetch('/api/admin/companies', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({ company_id: id, active: false }),
         });
 
