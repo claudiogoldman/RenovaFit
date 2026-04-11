@@ -92,3 +92,19 @@ export async function carregarHistoricoContatos(
 
   return (data || []).map((row) => mapHistoricoRowToItem(row as HistoricoContatoRow));
 }
+
+export async function removerHistoricoContato(
+  supabase: SupabaseClient,
+  ownerId: string,
+  historicoId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('historico_contatos')
+    .delete()
+    .eq('id', historicoId)
+    .eq('owner_id', ownerId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
