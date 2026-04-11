@@ -1,6 +1,11 @@
-# WORKLOG main
+# WORKLOG — Coordenação Copilot + Codex
 
-## Objetivo da branch
+> **Arquivo único de estado compartilhado.**  
+> Antes de editar qualquer arquivo: registre lock abaixo.  
+> Após commit: atualize Commits, Handoff e Checklist.  
+> Codex usa este arquivo como `WORKLOG_work.md` (sinônimo).
+
+## Objetivo
 Manter o fluxo Copilot + Codex sincronizado, com handoff claro e sem conflitos.
 
 ## Arquivos em edicao (lock)
