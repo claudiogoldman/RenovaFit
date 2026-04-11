@@ -1,3 +1,4 @@
+import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export async function middleware(request: NextRequest) {
@@ -7,26 +8,44 @@ export async function middleware(request: NextRequest) {
   const protectedRoutes = ['/retencao', '/conversao', '/reativacao', '/admin'];
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
-  // Get the session from cookies
-  const supabaseSession = request.cookies.get('sb-' + (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.split('.')[0] || ''));
-  const hasSession = !!supabaseSession?.value || !!request.cookies.get('sb-auth-token')?.value;
+  let response = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
 
   // If accessing a protected route without session, redirect to login
-  if (isProtectedRoute && !hasSession) {
+  if (isProtectedRoute && !user) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
   // If accessing login page while authenticated, redirect to retencao
-  if (pathname === '/login' && hasSession) {
+  if (pathname === '/login' && user) {
     return NextResponse.redirect(new URL('/retencao', request.url));
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
   matcher: [
-    // Protect these routes
     '/retencao/:path*',
     '/conversao/:path*',
     '/reativacao/:path*',
@@ -34,3 +53,4 @@ export const config = {
     '/login',
   ],
 };
+
