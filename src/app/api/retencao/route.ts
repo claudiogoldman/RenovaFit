@@ -9,7 +9,6 @@ import {
 } from '@/lib/prompts-retencao';
 import type { StudentProfile, AIResponse } from '@/lib/types';
 import type { StrategyConfig } from '@/lib/types/multitenancy';
-import { DEFAULT_STRATEGY_CONFIG } from '@/lib/types/multitenancy';
 
 function buildDynamicPrompt(
   perfil: StudentProfile,

@@ -38,7 +38,7 @@ async function getUserScope(supabase: ReturnType<typeof createSupabaseAdminClien
   };
 }
 
-function applyScopeFilter<T extends { eq: (col: string, val: string) => T }>(
+function applyScopeFilter<T extends { eq: (...args: [string, string]) => T }>(
   query: T,
   scope: UserScope,
 ): T {
