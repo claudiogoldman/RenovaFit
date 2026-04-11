@@ -6,7 +6,7 @@ import { AlunoSearch } from './AlunoSearch'
 import { StrategyConfigDrawer } from './StrategyConfigDrawer'
 import { StrategyConfigEditor, type StrategyConfigSaveState } from './StrategyConfigEditor'
 import { AIFormattedResponse } from '@/components/ai-formatted-response'
-import type { HistoricoContatoItem, RenewalItem, StudentProfile } from '@/lib/types'
+import type { AlunoStrategyItem, HistoricoContatoItem, RenewalItem, StudentProfile } from '@/lib/types'
 import type { StrategyConfig } from '@/lib/types/multitenancy'
 import { DEFAULT_STRATEGY_CONFIG } from '@/lib/types/multitenancy'
 
@@ -254,7 +254,9 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
   // Student form state
   const [student, setStudent] = useState<StudentProfile>(EMPTY_STUDENT)
   const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(null)
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(null)
   const [renewalDate, setRenewalDate] = useState('')
+  const [baseMessage, setBaseMessage] = useState('')
   const [formCollapsed, setFormCollapsed] = useState(false)
 
   // Message action state
@@ -284,6 +286,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
         method: 'POST',
         body: JSON.stringify({
           message: text,
+          strategyId: selectedStrategyId,
           canal: via === 'whatsapp' ? 'whatsapp' : 'manual',
           tipoContato: contactHistory.some((h) => h.renovacaoId === selectedAlunoId)
             ? 'followup'
@@ -301,6 +304,8 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
 
   // Contact history
   const [contactHistory, setContactHistory] = useState<HistoricoContatoItem[]>([])
+  const [studentStrategies, setStudentStrategies] = useState<AlunoStrategyItem[]>([])
+  const [loadingStrategies, setLoadingStrategies] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null)
@@ -342,6 +347,42 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
     }
   }, [authFetch])
 
+  const loadStrategies = useCallback(async (alunoId: string) => {
+    setLoadingStrategies(true)
+    try {
+      const r = await authFetch(`/api/renewals/${alunoId}/strategies?limit=20`)
+      const data = await r.json()
+      if (data.success && Array.isArray(data.data)) {
+        setStudentStrategies(data.data as AlunoStrategyItem[])
+      }
+    } catch {
+      // silent - nao bloqueia uso da tela
+    } finally {
+      setLoadingStrategies(false)
+    }
+  }, [authFetch])
+
+  const saveStrategy = useCallback(async (alunoId: string, strategyText: string, source: 'ia' | 'manual' | 'historico') => {
+    try {
+      const r = await authFetch(`/api/renewals/${alunoId}/strategies`, {
+        method: 'POST',
+        body: JSON.stringify({
+          alunoNome: student.name,
+          strategyText,
+          baseMessage,
+          source,
+        }),
+      })
+      const data = await r.json()
+      if (r.ok && data.success && data.data?.id) {
+        setSelectedStrategyId(String(data.data.id))
+        await loadStrategies(alunoId)
+      }
+    } catch {
+      // silent - estrategia visual continua disponivel mesmo sem salvar
+    }
+  }, [authFetch, baseMessage, loadStrategies, student.name])
+
   async function handleDeleteHistory(id: string) {
     const confirmed = window.confirm('Excluir este item do historico de contatos?')
     if (!confirmed) return
@@ -366,6 +407,15 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
   useEffect(() => {
     void loadHistory()
   }, [loadHistory])
+
+  useEffect(() => {
+    if (!selectedAlunoId) {
+      setStudentStrategies([])
+      setSelectedStrategyId(null)
+      return
+    }
+    void loadStrategies(selectedAlunoId)
+  }, [loadStrategies, selectedAlunoId])
 
   // Pre-load student from ?alunoId query param
   useEffect(() => {
@@ -416,7 +466,25 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
       }
 
       prefillFromAluno(data.data as RenewalItem)
-      setOutput(buildStrategyFromHistory(item))
+
+      if (item.strategyId) {
+        const strategyRes = await authFetch(`/api/renewals/strategies/${item.strategyId}`)
+        const strategyData = await strategyRes.json()
+        if (strategyRes.ok && strategyData.success && strategyData.data) {
+          setOutput(String(strategyData.data.strategyText || ''))
+          setBaseMessage(String(strategyData.data.baseMessage || item.mensagem || ''))
+          setSelectedStrategyId(String(strategyData.data.id))
+        } else {
+          setOutput(buildStrategyFromHistory(item))
+          setBaseMessage(item.mensagem)
+          setSelectedStrategyId(null)
+        }
+      } else {
+        setOutput(buildStrategyFromHistory(item))
+        setBaseMessage(item.mensagem)
+        setSelectedStrategyId(null)
+      }
+
       setTab('perfil')
       setFormCollapsed(false)
     } catch (err) {
@@ -439,6 +507,14 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
     if (!selectedAlunoId) return contactHistory
     return contactHistory.filter((item) => item.renovacaoId === selectedAlunoId)
   }, [contactHistory, selectedAlunoId])
+
+  useEffect(() => {
+    // Ultima mensagem enviada vira base padrao para nova estrategia
+    if (!selectedAlunoId) return
+    const latest = filteredHistory[0]
+    if (!latest) return
+    setBaseMessage((prev) => (prev.trim() ? prev : latest.mensagem))
+  }, [filteredHistory, selectedAlunoId])
 
   async function handleGenerate() {
     if (loading) return
@@ -480,6 +556,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
           action: 'strategy',
           alunoId,
           student,
+          baseMessage,
           config,
           ...(diasParaRenovacao !== null ? { diasParaRenovacao } : {}),
         }),
@@ -487,7 +564,11 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
       })
       const result = await res.json()
       if (!res.ok || !result.success) throw new Error(result.error ?? 'Erro ao gerar estratégia')
-      setOutput(result.data.messages[0] as string)
+      const strategyText = result.data.messages[0] as string
+      setOutput(strategyText)
+      if (alunoId) {
+        await saveStrategy(alunoId, strategyText, 'ia')
+      }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         setError('Geração interrompida.')
@@ -543,8 +624,10 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                 onSelect={(aluno) => prefillFromAluno(aluno)}
                 onNew={() => {
                   setSelectedAlunoId(null)
+                  setSelectedStrategyId(null)
                   setStudent(EMPTY_STUDENT)
                   setRenewalDate('')
+                  setBaseMessage('')
                   setOutput(null)
       setSentMsgIds(new Set())
       setCopiedMsgId(null)
@@ -695,6 +778,18 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                           placeholder="Histórico de frequência, problemas, feedback anterior..."
                           className="rounded-lg border border-emerald-400/20 bg-slate-900 px-3 py-2 text-white focus:border-emerald-400 focus:outline-none resize-none"
                           rows={2}
+                        />
+                      </label>
+
+                      {/* Base message */}
+                      <label className="flex flex-col gap-1.5 text-sm text-slate-200">
+                        Ultima mensagem enviada (base para nova estrategia)
+                        <textarea
+                          value={baseMessage}
+                          onChange={(e) => setBaseMessage(e.target.value)}
+                          placeholder="Cole aqui a ultima mensagem enviada para usar como base"
+                          className="rounded-lg border border-cyan-400/20 bg-slate-900 px-3 py-2 text-white focus:border-cyan-400 focus:outline-none resize-none"
+                          rows={3}
                         />
                       </label>
                     </div>
@@ -908,6 +1003,51 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                                 {mapTipoContatoLabel(item.tipoContato)} • {item.canal}
                               </p>
                               <p className="text-xs text-slate-300 line-clamp-3">{item.mensagem}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-4">
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-200">
+                          Estrategias Salvas do Aluno
+                        </h3>
+                        <span className="text-[11px] rounded-full border border-slate-700 bg-slate-950/70 px-2 py-0.5 text-slate-400">
+                          {selectedAlunoId ? 'Aluno selecionado' : 'Selecione um aluno'}
+                        </span>
+                      </div>
+
+                      {!selectedAlunoId ? (
+                        <p className="text-sm text-slate-400">Selecione um aluno para ver estrategias salvas.</p>
+                      ) : loadingStrategies ? (
+                        <p className="text-sm text-slate-400">Carregando estrategias...</p>
+                      ) : studentStrategies.length === 0 ? (
+                        <p className="text-sm text-slate-400">Nenhuma estrategia salva para este aluno.</p>
+                      ) : (
+                        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                          {studentStrategies.map((strategy) => (
+                            <div key={strategy.id} className="rounded-md border border-slate-700 bg-slate-950/60 p-3">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <p className="text-xs font-semibold text-slate-200">{strategy.alunoNome}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-[11px] text-slate-400">{formatDateTime(strategy.createdAt)}</p>
+                                  <button
+                                    onClick={() => {
+                                      setOutput(strategy.strategyText)
+                                      setBaseMessage(strategy.baseMessage || '')
+                                      setSelectedStrategyId(strategy.id)
+                                      setFormCollapsed(false)
+                                    }}
+                                    className="text-[11px] text-cyan-300 hover:text-cyan-200 border border-cyan-500/30 rounded px-1.5 py-0.5"
+                                  >
+                                    Carregar
+                                  </button>
+                                </div>
+                              </div>
+                              <p className="text-[11px] text-slate-400 mb-1">Origem: {strategy.source}</p>
+                              <p className="text-xs text-slate-300 line-clamp-3">{strategy.strategyText}</p>
                             </div>
                           ))}
                         </div>

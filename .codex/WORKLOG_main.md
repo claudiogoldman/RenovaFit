@@ -25,8 +25,16 @@
 Manter o fluxo Copilot + Codex sincronizado, com handoff claro e sem conflitos.
 
 ## Arquivos em edicao (lock)
-- **Copilot** (feat/history-load-without-ai):
+- **Copilot** (feat/student-strategies-linked-messages):
+  - `supabase/migrations/20260411000003_aluno_strategies.sql`
+  - `src/app/api/renewals/[id]/strategies/route.ts`
+  - `src/app/api/renewals/strategies/[strategyId]/route.ts`
+  - `src/app/api/renewals/[id]/contact/route.ts`
+  - `src/lib/contact-history.ts`
+  - `src/lib/types.ts`
+  - `src/app/api/retencao/route.ts`
   - `src/components/retencao/RetencaoPageClient.tsx`
+  - `SUPABASE_SETUP.md`
 
 ## Checklist da tarefa atual
 - [x] Versionar template de rotina Codex/Copilot

@@ -14,6 +14,7 @@ function buildDynamicPrompt(
   perfil: StudentProfile,
   config: StrategyConfig,
   diasParaRenovacao?: number,
+  baseMessage?: string,
 ): string {
   const secoes: string[] = [];
 
@@ -106,9 +107,14 @@ Explique rapidamente como usar cada gatilho na abordagem.
     ? `\nCONTEXTO ADICIONAL DO ATENDENTE: ${config.contexto_adicional}`
     : '';
 
+  const baseMessageBlock = baseMessage?.trim()
+    ? `\nULTIMA MENSAGEM ENVIADA (usar como base, sem repetir igual):\n${baseMessage.trim()}`
+    : '';
+
   return `Você é especialista em retenção de clientes de academia via WhatsApp.
 Tom da resposta: ${tomInstrucao[config.tom]}
 ${contextoExtra}
+${baseMessageBlock}
 
 PERFIL DO ALUNO:
 ${JSON.stringify(perfil, null, 2)}
@@ -139,6 +145,7 @@ export async function POST(request: NextRequest) {
   let strategyStyle: RetencaoStrategyStyle = 'executivo';
   let config: StrategyConfig | undefined;
   let diasParaRenovacao: number | undefined;
+  let baseMessage: string | undefined;
 
   try {
     const body = await request.json();
@@ -150,6 +157,7 @@ export async function POST(request: NextRequest) {
     strategyStyle = (body as { strategyStyle?: RetencaoStrategyStyle }).strategyStyle || 'executivo';
     config = (body as { config?: StrategyConfig }).config;
     diasParaRenovacao = (body as { diasParaRenovacao?: number }).diasParaRenovacao;
+    baseMessage = (body as { baseMessage?: string }).baseMessage;
 
     let prompt = '';
     const systemInstruction = 'Você é um especialista em retenção de alunos de academia.';
@@ -158,7 +166,7 @@ export async function POST(request: NextRequest) {
       case 'strategy':
         // Use dynamic prompt when config is provided, fallback to legacy prompt otherwise
         prompt = config
-          ? buildDynamicPrompt(student, config, diasParaRenovacao)
+          ? buildDynamicPrompt(student, config, diasParaRenovacao, baseMessage)
           : buildRetencaoPrompt(student, strategyStyle);
         break;
       case 'objection':
