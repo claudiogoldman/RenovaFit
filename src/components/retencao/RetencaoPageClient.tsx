@@ -310,9 +310,9 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null)
   const [loadingHistoryItemId, setLoadingHistoryItemId] = useState<string | null>(null)
-  const [clientResponse, setClientResponse] = useState('')
-  const [noClientResponse, setNoClientResponse] = useState(false)
-  const [savingClientResponse, setSavingClientResponse] = useState(false)
+  const [historyResponseDrafts, setHistoryResponseDrafts] = useState<Record<string, string>>({})
+  const [historyNoResponseFlags, setHistoryNoResponseFlags] = useState<Record<string, boolean>>({})
+  const [savingHistoryResponseId, setSavingHistoryResponseId] = useState<string | null>(null)
 
   // AI state
   const [output, setOutput] = useState<string | null>(null)
@@ -407,31 +407,28 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
     }
   }
 
-  async function handleRegisterClientResponse() {
-    if (!selectedAlunoId) {
-      setHistoryError('Selecione um aluno para registrar resposta no historico.')
-      return
-    }
-
-    const message = noClientResponse
+  async function handleRegisterClientResponse(item: HistoricoContatoItem) {
+    const noResponse = historyNoResponseFlags[item.id] ?? false
+    const typedResponse = (historyResponseDrafts[item.id] || '').trim()
+    const message = noResponse
       ? 'Cliente nao respondeu a tentativa anterior.'
-      : clientResponse.trim()
+      : typedResponse
 
     if (!message) {
-      setHistoryError('Informe a resposta do cliente ou marque "Sem resposta".')
+      setHistoryError('Informe a resposta do cliente ou marque "Sem resposta" no item desejado.')
       return
     }
 
-    setSavingClientResponse(true)
+    setSavingHistoryResponseId(item.id)
     setHistoryError(null)
     try {
-      const res = await authFetch(`/api/renewals/${selectedAlunoId}/contact`, {
+      const res = await authFetch(`/api/renewals/${item.renovacaoId}/contact`, {
         method: 'POST',
         body: JSON.stringify({
           message,
-          strategyId: selectedStrategyId,
+          strategyId: item.strategyId || selectedStrategyId,
           canal: 'manual',
-          tipoContato: noClientResponse ? 'observacao' : 'resposta',
+          tipoContato: noResponse ? 'observacao' : 'resposta',
         }),
       })
       const data = await res.json()
@@ -441,12 +438,12 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
 
       await loadHistory()
       setBaseMessage(message)
-      setClientResponse('')
-      setNoClientResponse(false)
+      setHistoryResponseDrafts((prev) => ({ ...prev, [item.id]: '' }))
+      setHistoryNoResponseFlags((prev) => ({ ...prev, [item.id]: false }))
     } catch (err) {
       setHistoryError(err instanceof Error ? err.message : 'Nao foi possivel registrar resposta')
     } finally {
-      setSavingClientResponse(false)
+      setSavingHistoryResponseId(null)
     }
   }
 
@@ -1011,37 +1008,6 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                         </span>
                       </div>
 
-                      <div className="mb-3 rounded-lg border border-slate-700 bg-slate-950/60 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-300 mb-2">
-                          Resposta do cliente
-                        </p>
-                        <textarea
-                          value={clientResponse}
-                          onChange={(e) => setClientResponse(e.target.value)}
-                          disabled={noClientResponse}
-                          placeholder="Ex.: Cliente respondeu que só consegue voltar no mês que vem..."
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none disabled:opacity-60 resize-none"
-                          rows={2}
-                        />
-                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                          <label className="inline-flex items-center gap-2 text-xs text-slate-300">
-                            <input
-                              type="checkbox"
-                              checked={noClientResponse}
-                              onChange={(e) => setNoClientResponse(e.target.checked)}
-                            />
-                            Sem resposta do cliente
-                          </label>
-                          <button
-                            onClick={() => void handleRegisterClientResponse()}
-                            disabled={savingClientResponse || !selectedAlunoId}
-                            className="rounded border border-cyan-500/30 px-2 py-1 text-xs text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-50"
-                          >
-                            {savingClientResponse ? 'Salvando...' : 'Registrar no historico'}
-                          </button>
-                        </div>
-                      </div>
-
                       {historyLoading ? (
                         <p className="text-sm text-slate-400">Carregando historico...</p>
                       ) : historyError ? (
@@ -1089,6 +1055,46 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                                 {mapTipoContatoLabel(item.tipoContato)} • {item.canal}
                               </p>
                               <p className="text-xs text-slate-300 line-clamp-3">{item.mensagem}</p>
+                              <div className="mt-3 rounded border border-slate-700 bg-slate-900/60 p-2">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300 mb-1">
+                                  Retorno deste contato
+                                </p>
+                                <textarea
+                                  value={historyResponseDrafts[item.id] || ''}
+                                  onChange={(e) =>
+                                    setHistoryResponseDrafts((prev) => ({
+                                      ...prev,
+                                      [item.id]: e.target.value,
+                                    }))
+                                  }
+                                  disabled={historyNoResponseFlags[item.id] || false}
+                                  placeholder="Ex.: Cliente respondeu que vai verificar e retornar..."
+                                  className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-none disabled:opacity-60 resize-none"
+                                  rows={2}
+                                />
+                                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                                  <label className="inline-flex items-center gap-1.5 text-[11px] text-slate-300">
+                                    <input
+                                      type="checkbox"
+                                      checked={historyNoResponseFlags[item.id] || false}
+                                      onChange={(e) =>
+                                        setHistoryNoResponseFlags((prev) => ({
+                                          ...prev,
+                                          [item.id]: e.target.checked,
+                                        }))
+                                      }
+                                    />
+                                    Sem resposta
+                                  </label>
+                                  <button
+                                    onClick={() => void handleRegisterClientResponse(item)}
+                                    disabled={savingHistoryResponseId === item.id}
+                                    className="rounded border border-cyan-500/30 px-2 py-1 text-[11px] text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-50"
+                                  >
+                                    {savingHistoryResponseId === item.id ? 'Salvando...' : 'Registrar retorno'}
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           ))}
                         </div>
