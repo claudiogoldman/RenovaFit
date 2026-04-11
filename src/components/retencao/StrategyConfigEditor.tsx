@@ -3,13 +3,25 @@
 import { useEffect, useRef, useState } from 'react'
 import type { StrategyConfig } from '@/lib/types/multitenancy'
 
+export interface StrategyConfigSaveState {
+  saving: boolean
+  lastSaved: Date | null
+  saveError: string | null
+}
+
 interface StrategyConfigEditorProps {
   config: StrategyConfig
   onChange: (config: StrategyConfig) => void
   autoSave?: boolean
+  onSaveStateChange?: (state: StrategyConfigSaveState) => void
 }
 
-export function StrategyConfigEditor({ config, onChange, autoSave = false }: StrategyConfigEditorProps) {
+export function StrategyConfigEditor({
+  config,
+  onChange,
+  autoSave = false,
+  onSaveStateChange,
+}: StrategyConfigEditorProps) {
   const [saving, setSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -17,9 +29,16 @@ export function StrategyConfigEditor({ config, onChange, autoSave = false }: Str
   const isMounted = useRef(true)
 
   useEffect(() => {
+    onSaveStateChange?.({ saving, lastSaved, saveError })
+  }, [saving, lastSaved, saveError, onSaveStateChange])
+
+  useEffect(() => {
     isMounted.current = true
     return () => {
       isMounted.current = false
+      if (autoSaveRef.current) {
+        clearTimeout(autoSaveRef.current)
+      }
     }
   }, [])
 

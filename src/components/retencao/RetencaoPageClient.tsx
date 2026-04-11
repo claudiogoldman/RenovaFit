@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 import { AlunoSearch } from './AlunoSearch'
 import { StrategyConfigDrawer } from './StrategyConfigDrawer'
-import { StrategyConfigEditor } from './StrategyConfigEditor'
+import { StrategyConfigEditor, type StrategyConfigSaveState } from './StrategyConfigEditor'
 import { AIFormattedResponse } from '@/components/ai-formatted-response'
 import type { RenewalItem, StudentProfile } from '@/lib/types'
 import type { StrategyConfig } from '@/lib/types/multitenancy'
@@ -72,6 +72,15 @@ const GOAL_OPTIONS = [
 const GENDER_OPTIONS = ['Masculino', 'Feminino', 'Nao-binario', 'Prefere nao informar']
 const PLAN_OPTIONS = ['Anual', 'Semestral', 'Trimestral', 'Mensal']
 
+function relativeSaveTime(date: Date): string {
+  const diffMs = Date.now() - date.getTime()
+  const diffSecs = Math.round(diffMs / 1000)
+  if (diffSecs < 60) return 'agora'
+  const diffMins = Math.round(diffSecs / 60)
+  if (diffMins === 1) return '1 min'
+  return `${diffMins} min`
+}
+
 export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string }) {
   const [tab, setTab] = useState<Tab>('perfil')
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -110,6 +119,11 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
   // Strategy config state
   const [config, setConfig] = useState<StrategyConfig>({ ...DEFAULT_STRATEGY_CONFIG } as StrategyConfig)
   const [configLoaded, setConfigLoaded] = useState(false)
+  const [configSaveState, setConfigSaveState] = useState<StrategyConfigSaveState>({
+    saving: false,
+    lastSaved: null,
+    saveError: null,
+  })
 
   // Student form state
   const [student, setStudent] = useState<StudentProfile>(EMPTY_STUDENT)
@@ -441,6 +455,21 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                           {activeConfigCount(config)} seções
                         </span>
                       )}
+                      {configSaveState.saving && (
+                        <span className="rounded-full bg-blue-500/20 text-blue-300 text-xs px-2 py-0.5">
+                          Salvando...
+                        </span>
+                      )}
+                      {!configSaveState.saving && configSaveState.saveError && (
+                        <span className="rounded-full bg-red-500/20 text-red-300 text-xs px-2 py-0.5">
+                          Erro ao salvar
+                        </span>
+                      )}
+                      {!configSaveState.saving && !configSaveState.saveError && configSaveState.lastSaved && (
+                        <span className="rounded-full bg-emerald-500/20 text-emerald-300 text-xs px-2 py-0.5">
+                          Salvo ha {relativeSaveTime(configSaveState.lastSaved)}
+                        </span>
+                      )}
                     </button>
 
                     <button
@@ -499,6 +528,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                   config={config}
                   onChange={setConfig}
                   onClose={() => setDrawerOpen(false)}
+                  onSaveStateChange={setConfigSaveState}
                 />
               )}
             </div>
@@ -514,7 +544,12 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                 Defina o que a IA deve gerar em cada análise. Salvo automaticamente.
               </p>
             </div>
-            <StrategyConfigEditor config={config} onChange={setConfig} autoSave />
+            <StrategyConfigEditor
+              config={config}
+              onChange={setConfig}
+              autoSave
+              onSaveStateChange={setConfigSaveState}
+            />
           </div>
         )}
       </div>

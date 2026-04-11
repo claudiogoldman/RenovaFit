@@ -1,12 +1,13 @@
 'use client'
 
 import type { StrategyConfig } from '@/lib/types/multitenancy'
-import { StrategyConfigEditor } from './StrategyConfigEditor'
+import { StrategyConfigEditor, type StrategyConfigSaveState } from './StrategyConfigEditor'
 
 interface StrategyConfigDrawerProps {
   config: StrategyConfig
   onChange: (config: StrategyConfig) => void
   onClose: () => void
+  onSaveStateChange?: (state: StrategyConfigSaveState) => void
 }
 
 function activeCount(config: StrategyConfig): number {
@@ -20,7 +21,12 @@ function activeCount(config: StrategyConfig): number {
   ].filter(Boolean).length
 }
 
-export function StrategyConfigDrawer({ config, onChange, onClose }: StrategyConfigDrawerProps) {
+export function StrategyConfigDrawer({
+  config,
+  onChange,
+  onClose,
+  onSaveStateChange,
+}: StrategyConfigDrawerProps) {
   return (
     <div className="w-80 flex-shrink-0 rounded-xl border border-slate-700 bg-slate-900/80 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
@@ -37,7 +43,12 @@ export function StrategyConfigDrawer({ config, onChange, onClose }: StrategyConf
         </button>
       </div>
       <div className="p-4 overflow-y-auto max-h-[calc(100vh-200px)]">
-        <StrategyConfigEditor config={config} onChange={onChange} autoSave />
+        <StrategyConfigEditor
+          config={config}
+          onChange={onChange}
+          autoSave
+          onSaveStateChange={onSaveStateChange}
+        />
       </div>
     </div>
   )
