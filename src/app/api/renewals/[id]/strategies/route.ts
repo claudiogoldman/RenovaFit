@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from('aluno_strategies')
-      .select('id,renovacao_id,aluno_nome,strategy_text,base_message,source,created_at')
+      .select('id,renovacao_id,aluno_nome,strategy_text,base_message,profile_snapshot,source,created_at')
       .eq('owner_id', user.id)
       .eq('renovacao_id', id)
       .order('created_at', { ascending: false })
@@ -32,6 +32,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       alunoNome: String(row.aluno_nome || ''),
       strategyText: String(row.strategy_text || ''),
       baseMessage: String(row.base_message || ''),
+      profileSnapshot: row.profile_snapshot ?? null,
       source: String(row.source || 'ia'),
       createdAt: String(row.created_at),
     }));
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       alunoNome?: string;
       strategyText?: string;
       baseMessage?: string;
+      profileSnapshot?: unknown;
       source?: 'ia' | 'manual' | 'historico';
     };
 
@@ -82,9 +84,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
         aluno_nome: (body.alunoNome || String(renewal.name || '')).trim(),
         strategy_text: body.strategyText.trim(),
         base_message: body.baseMessage?.trim() || null,
+        profile_snapshot: body.profileSnapshot ?? null,
         source: body.source || 'ia',
       })
-      .select('id,renovacao_id,aluno_nome,strategy_text,base_message,source,created_at')
+      .select('id,renovacao_id,aluno_nome,strategy_text,base_message,profile_snapshot,source,created_at')
       .single();
 
     if (error || !data) {
@@ -99,6 +102,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         alunoNome: String(data.aluno_nome || ''),
         strategyText: String(data.strategy_text || ''),
         baseMessage: String(data.base_message || ''),
+        profileSnapshot: data.profile_snapshot ?? null,
         source: String(data.source || 'ia'),
         createdAt: String(data.created_at),
       },

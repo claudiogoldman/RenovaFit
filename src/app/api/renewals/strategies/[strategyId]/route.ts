@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from('aluno_strategies')
-      .select('id,renovacao_id,aluno_nome,strategy_text,base_message,source,created_at')
+      .select('id,renovacao_id,aluno_nome,strategy_text,base_message,profile_snapshot,source,created_at')
       .eq('id', strategyId)
       .eq('owner_id', user.id)
       .single();
@@ -35,6 +35,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         alunoNome: String(data.aluno_nome || ''),
         strategyText: String(data.strategy_text || ''),
         baseMessage: String(data.base_message || ''),
+        profileSnapshot: data.profile_snapshot ?? null,
         source: String(data.source || 'ia'),
         createdAt: String(data.created_at),
       },
