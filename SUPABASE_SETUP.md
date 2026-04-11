@@ -97,6 +97,17 @@ Se aparecer o erro `Could not find the table 'public.strategy_configs' in the sc
 
 Essa migration cria a tabela `public.strategy_configs` (configuracao por usuario), indice unico por `profile_id` e politicas RLS.
 
+## 2.2) Integracoes por usuario (IA e WhatsApp)
+
+Para habilitar a tela de integracoes em `/admin/configuracoes`, execute tambem:
+
+- `supabase/migrations/20260411000002_integration_configs.sql`
+
+Essa migration cria `public.integration_configs` com configuracao por usuario para:
+- Provedor de IA ativo (Gemini/OpenRouter)
+- Chaves de IA
+- Tokens/IDs do WhatsApp
+
 ## 3) Rotas
 
 - `GET /api/renewals`

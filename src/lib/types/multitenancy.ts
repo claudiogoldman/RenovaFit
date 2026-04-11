@@ -70,6 +70,45 @@ export interface StrategyConfig {
   contexto_adicional?: string
 }
 
+export type AIProvider = 'gemini' | 'openrouter'
+
+export interface IntegrationConfig {
+  id?: string
+  profile_id?: string
+  active_provider: AIProvider
+
+  gemini_api_key?: string | null
+  openrouter_api_key?: string | null
+  openrouter_model?: string | null
+
+  whatsapp_access_token?: string | null
+  whatsapp_phone_number_id?: string | null
+  whatsapp_business_account_id?: string | null
+  whatsapp_verify_token?: string | null
+}
+
+export interface IntegrationConfigView {
+  activeProvider: AIProvider
+  openrouterModel: string
+  whatsappPhoneNumberId: string
+  whatsappBusinessAccountId: string
+  hasGeminiApiKey: boolean
+  hasOpenrouterApiKey: boolean
+  hasWhatsappAccessToken: boolean
+  hasWhatsappVerifyToken: boolean
+}
+
+export const DEFAULT_INTEGRATION_CONFIG_VIEW: IntegrationConfigView = {
+  activeProvider: 'gemini',
+  openrouterModel: 'openrouter/free',
+  whatsappPhoneNumberId: '',
+  whatsappBusinessAccountId: '',
+  hasGeminiApiKey: false,
+  hasOpenrouterApiKey: false,
+  hasWhatsappAccessToken: false,
+  hasWhatsappVerifyToken: false,
+}
+
 export const DEFAULT_STRATEGY_CONFIG: Omit<StrategyConfig, 'id' | 'profile_id'> = {
   section_resumo: true,
   section_mensagens: true,
