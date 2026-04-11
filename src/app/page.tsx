@@ -66,6 +66,21 @@ export default function Home() {
           </Link>
         </div>
 
+        <div className="mt-6 flex justify-center">
+          <Link
+            href="/como-usar"
+            className="group relative p-8 rounded-2xl border border-slate-600/50 bg-gradient-to-br from-slate-800 to-slate-900 hover:border-slate-400/50 transition-all duration-300 max-w-xl"
+          >
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-600/10 to-slate-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative z-10 text-center">
+              <h2 className="text-2xl font-bold mb-2 text-slate-200">📖 Como usar</h2>
+              <p className="text-slate-400">
+                Guia completo: jornada do sistema do primeiro acesso até a renovação do aluno
+              </p>
+            </div>
+          </Link>
+        </div>
+
         <div className="mt-16 p-8 rounded-2xl border border-slate-700 bg-slate-900/50">
           <h3 className="text-lg font-semibold mb-3">📋 Sobre o RenovaFit</h3>
           <p className="text-slate-300 leading-relaxed">
