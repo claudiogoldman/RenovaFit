@@ -910,10 +910,12 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                     {output ? (
                       <div className="space-y-3">
                         {strategySections.length > 0 ? (
-                          <div className="grid gap-3 lg:grid-cols-2">
+                          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                             {strategySections.map((section) => {
                               const isMensagens = section.title === 'Mensagens Prontas'
-                              const messages = isMensagens
+                              const isObjecoes = section.title === 'Respostas a Objecoes'
+                              const hasMessageCards = isMensagens || isObjecoes
+                              const messages = hasMessageCards
                                 ? parseMessagesFromSection(section.content)
                                 : null
                               return (
@@ -925,12 +927,15 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                                     {section.title}
                                   </h3>
 
-                                  {isMensagens && messages ? (
-                                    <div className="space-y-3">
+                                  {hasMessageCards && messages ? (
+                                    <div className="grid gap-3 md:grid-cols-2">
                                       {messages.map((msg) => (
+                                        (() => {
+                                          const messageId = `${section.title}-${msg.id}`
+                                          return (
                                         <div
-                                          key={msg.id}
-                                          className="rounded-lg border border-slate-700 bg-slate-950/60 p-4"
+                                          key={messageId}
+                                          className="rounded-lg border border-slate-700 bg-slate-950/60 p-4 h-full"
                                         >
                                           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
                                             {msg.label}
@@ -940,34 +945,36 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                                           </p>
                                           <div className="flex gap-2 flex-wrap">
                                             <button
-                                              onClick={() => void handleMessageAction(msg.id, msg.text, 'copy')}
+                                              onClick={() => void handleMessageAction(messageId, msg.text, 'copy')}
                                               className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                                copiedMsgId === msg.id
+                                                copiedMsgId === messageId
                                                   ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
                                                   : 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
                                               }`}
                                             >
-                                              {copiedMsgId === msg.id ? '✓ Copiado' : '📋 Copiar'}
+                                              {copiedMsgId === messageId ? '✓ Copiado' : '📋 Copiar'}
                                             </button>
-                                            {whatsappConfigured && selectedAlunoId && (
+                                            {isMensagens && whatsappConfigured && selectedAlunoId && (
                                               <button
-                                                onClick={() => void handleMessageAction(msg.id, msg.text, 'whatsapp')}
-                                                disabled={sendingMsgId === msg.id}
+                                                onClick={() => void handleMessageAction(messageId, msg.text, 'whatsapp')}
+                                                disabled={sendingMsgId === messageId}
                                                 className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
-                                                  sentMsgIds.has(msg.id)
+                                                  sentMsgIds.has(messageId)
                                                     ? 'border-green-600 bg-green-500/20 text-green-300'
                                                     : 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
                                                 }`}
                                               >
-                                                {sentMsgIds.has(msg.id)
+                                                {sentMsgIds.has(messageId)
                                                   ? '✓ Enviado'
-                                                  : sendingMsgId === msg.id
+                                                  : sendingMsgId === messageId
                                                     ? 'Enviando...'
                                                     : '💬 Enviar WhatsApp'}
                                               </button>
                                             )}
                                           </div>
                                         </div>
+                                          )
+                                        })()
                                       ))}
                                     </div>
                                   ) : (
