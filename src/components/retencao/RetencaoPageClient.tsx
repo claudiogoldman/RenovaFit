@@ -6,11 +6,16 @@ import { AlunoSearch } from './AlunoSearch'
 import { StrategyConfigDrawer } from './StrategyConfigDrawer'
 import { StrategyConfigEditor, type StrategyConfigSaveState } from './StrategyConfigEditor'
 import { AIFormattedResponse } from '@/components/ai-formatted-response'
-import type { RenewalItem, StudentProfile } from '@/lib/types'
+import type { HistoricoContatoItem, RenewalItem, StudentProfile } from '@/lib/types'
 import type { StrategyConfig } from '@/lib/types/multitenancy'
 import { DEFAULT_STRATEGY_CONFIG } from '@/lib/types/multitenancy'
 
 type Tab = 'perfil' | 'config'
+
+type ParsedSection = {
+  title: string
+  content: string
+}
 
 function daysUntil(dateStr: string): number | null {
   if (!dateStr) return null
@@ -50,6 +55,80 @@ function activeConfigCount(config: StrategyConfig): number {
   ].filter(Boolean).length
 }
 
+function normalizeText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+function mapHeadingToTitle(line: string): string | null {
+  const normalized = normalizeText(line.replace(/^#+\s*/, '').trim())
+  if (normalized.includes('resumo do perfil')) return 'Resumo do Perfil'
+  if (normalized.includes('mensagens prontas')) return 'Mensagens Prontas'
+  if (normalized.includes('respostas') && normalized.includes('objec')) return 'Respostas a Objecoes'
+  if (normalized.includes('proximo passo')) return 'Proximo Passo'
+  if (normalized.includes('gatilhos')) return 'Gatilhos'
+  if (normalized.includes('historico do contato') || normalized.includes('historico de contato')) {
+    return 'Historico do Contato'
+  }
+  return null
+}
+
+function parseStrategySections(output: string | null): ParsedSection[] {
+  if (!output) return []
+
+  const lines = output.split('\n')
+  const sections: ParsedSection[] = []
+  let currentTitle: string | null = null
+  let currentLines: string[] = []
+
+  const flush = () => {
+    if (!currentTitle) return
+    const content = currentLines.join('\n').trim()
+    if (content) sections.push({ title: currentTitle, content })
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    const asHeading = mapHeadingToTitle(trimmed)
+    const numberedHeadingMatch = trimmed.match(/^\d+[.)]\s+(.+)$/)
+    const numberedTitle = numberedHeadingMatch ? mapHeadingToTitle(numberedHeadingMatch[1]) : null
+    const title = asHeading || numberedTitle
+
+    if (title) {
+      flush()
+      currentTitle = title
+      currentLines = []
+      continue
+    }
+
+    if (currentTitle) {
+      currentLines.push(line)
+    }
+  }
+
+  flush()
+  return sections
+}
+
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function mapTipoContatoLabel(tipo: HistoricoContatoItem['tipoContato']): string {
+  if (tipo === 'primeiro_contato') return 'Primeiro contato'
+  if (tipo === 'followup') return 'Follow-up'
+  if (tipo === 'resposta') return 'Resposta'
+  return 'Observacao'
+}
+
 const EMPTY_STUDENT: StudentProfile = {
   name: '',
   age: '',
@@ -71,6 +150,7 @@ const GOAL_OPTIONS = [
 ]
 const GENDER_OPTIONS = ['Masculino', 'Feminino', 'Nao-binario', 'Prefere nao informar']
 const PLAN_OPTIONS = ['Anual', 'Semestral', 'Trimestral', 'Mensal']
+const HAS_CHILDREN_OPTIONS = ['Nao', 'Sim, 1', 'Sim, 2', 'Sim, 3', 'Sim, +3']
 
 function relativeSaveTime(date: Date): string {
   const diffMs = Date.now() - date.getTime()
@@ -130,6 +210,11 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
   const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(null)
   const [renewalDate, setRenewalDate] = useState('')
 
+  // Contact history
+  const [contactHistory, setContactHistory] = useState<HistoricoContatoItem[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+
   // AI state
   const [output, setOutput] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -147,6 +232,33 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
       .catch(() => {})
       .finally(() => setConfigLoaded(true))
   }, [])
+
+  useEffect(() => {
+    let active = true
+    setHistoryLoading(true)
+    setHistoryError(null)
+
+    authFetch('/api/renewals/contact-history?limit=20')
+      .then((r) => r.json())
+      .then((data) => {
+        if (!active) return
+        if (data.success && Array.isArray(data.data)) {
+          setContactHistory(data.data as HistoricoContatoItem[])
+          return
+        }
+        setHistoryError(data.error || 'Nao foi possivel carregar o historico')
+      })
+      .catch(() => {
+        if (active) setHistoryError('Nao foi possivel carregar o historico')
+      })
+      .finally(() => {
+        if (active) setHistoryLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [authFetch])
 
   // Pre-load student from ?alunoId query param
   useEffect(() => {
@@ -178,6 +290,11 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
   }, [loading])
 
   const diasParaRenovacao = daysUntil(renewalDate)
+  const strategySections = useMemo(() => parseStrategySections(output), [output])
+  const filteredHistory = useMemo(() => {
+    if (!selectedAlunoId) return contactHistory
+    return contactHistory.filter((item) => item.renovacaoId === selectedAlunoId)
+  }, [contactHistory, selectedAlunoId])
 
   async function handleGenerate() {
     if (loading) return
@@ -410,13 +527,18 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                       {/* HasChildren */}
                       <label className="flex flex-col gap-1.5 text-sm text-slate-200">
                         Filhos
-                        <input
-                          type="text"
+                        <select
                           value={student.hasChildren}
                           onChange={(e) => setStudent((p) => ({ ...p, hasChildren: e.target.value }))}
-                          placeholder="Ex.: sim, 2 filhos"
                           className="rounded-lg border border-emerald-400/20 bg-slate-900 px-3 py-2 text-white focus:border-emerald-400 focus:outline-none"
-                        />
+                        >
+                          <option value="">Selecione</option>
+                          {HAS_CHILDREN_OPTIONS.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
                       </label>
 
                       {/* Routine */}
@@ -502,11 +624,28 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                   <div className="space-y-4">
                     <h2 className="text-xl font-bold text-purple-400">✨ Estratégia IA</h2>
                     {output ? (
-                      <div className="rounded-lg border border-emerald-400/20 bg-slate-900/50 p-5">
-                        <AIFormattedResponse content={output} />
+                      <div className="space-y-3">
+                        {strategySections.length > 0 ? (
+                          strategySections.map((section) => (
+                            <div
+                              key={section.title}
+                              className="rounded-lg border border-emerald-400/20 bg-slate-900/50 p-5"
+                            >
+                              <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-300 mb-3">
+                                {section.title}
+                              </h3>
+                              <AIFormattedResponse content={section.content} />
+                            </div>
+                          ))
+                        ) : (
+                          <div className="rounded-lg border border-emerald-400/20 bg-slate-900/50 p-5">
+                            <AIFormattedResponse content={output} />
+                          </div>
+                        )}
+
                         <button
                           onClick={() => void navigator.clipboard.writeText(output)}
-                          className="mt-4 rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-300 hover:bg-emerald-400/20 transition"
+                          className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-300 hover:bg-emerald-400/20 transition"
                         >
                           📋 Copiar Estratégia
                         </button>
@@ -518,6 +657,39 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                         </p>
                       </div>
                     )}
+
+                    <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-4">
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-200 mb-3">
+                        Historico do Contato
+                      </h3>
+
+                      {historyLoading ? (
+                        <p className="text-sm text-slate-400">Carregando historico...</p>
+                      ) : historyError ? (
+                        <p className="text-sm text-red-300">{historyError}</p>
+                      ) : filteredHistory.length === 0 ? (
+                        <p className="text-sm text-slate-400">
+                          {selectedAlunoId
+                            ? 'Sem historico para o aluno selecionado.'
+                            : 'Sem historico de contato ainda.'}
+                        </p>
+                      ) : (
+                        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                          {filteredHistory.map((item) => (
+                            <div key={item.id} className="rounded-md border border-slate-700 bg-slate-950/60 p-3">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <p className="text-xs font-semibold text-slate-200">{item.alunoNome}</p>
+                                <p className="text-[11px] text-slate-400">{formatDateTime(item.createdAt)}</p>
+                              </div>
+                              <p className="text-[11px] text-slate-400 mb-1">
+                                {mapTipoContatoLabel(item.tipoContato)} • {item.canal}
+                              </p>
+                              <p className="text-xs text-slate-300 line-clamp-3">{item.mensagem}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -18,7 +18,7 @@ function buildDynamicPrompt(
 ): string {
   const secoes: string[] = [];
 
-  // Seção 1: Resumo do perfil — SEMPRE incluída
+  // Secao 1: Resumo do perfil - SEMPRE incluida
   const urgencia =
     diasParaRenovacao !== undefined
       ? diasParaRenovacao <= 7
@@ -29,13 +29,13 @@ function buildDynamicPrompt(
       : '';
 
   secoes.push(`
-1. RESUMO DO PERFIL E CONTEXTO DE RENOVAÇÃO
-Faça um resumo conciso do perfil do aluno e o contexto atual de renovação.
-${urgencia}
-${config.section_historico ? 'Considere o histórico de contatos anteriores para não repetir abordagens.' : ''}
+## 1. Resumo do Perfil e Contexto de Renovacao
+- Resuma o perfil do aluno em 3-5 bullets praticos.
+- Traga o contexto de renovacao e o risco atual.
+${urgencia ? `- ${urgencia}` : ''}
 `);
 
-  // Seção 2: Mensagens prontas
+  // Secao 2: Mensagens prontas
   if (config.section_mensagens) {
     const tipos: string[] = [];
     if (config.msg_primeira_abordagem) tipos.push('Primeira abordagem (tom inicial, sem pressão)');
@@ -44,14 +44,14 @@ ${config.section_historico ? 'Considere o histórico de contatos anteriores para
     if (config.msg_consultiva) tipos.push('Versão consultiva (foco no objetivo do aluno)');
     if (tipos.length > 0) {
       secoes.push(`
-2. MENSAGENS PRONTAS PARA WHATSAPP
-Gere as seguintes versões (máx 5 linhas cada, linguagem brasileira casual):
-${tipos.map((t, i) => `${i + 1}. ${t}`).join('\n')}
+## 2. Mensagens Prontas
+Gere as seguintes versoes para WhatsApp (max 5 linhas cada, linguagem brasileira casual):
+${tipos.map((t, i) => `- ${i + 1}. ${t}`).join('\n')}
 `);
     }
   }
 
-  // Seção 3: Respostas a objeções
+  // Secao 3: Respostas a objecoes
   if (config.section_objecoes) {
     const objecoes: string[] = [];
     if (config.obj_preco) objecoes.push('"Tá caro" / "Não tenho dinheiro"');
@@ -61,29 +61,39 @@ ${tipos.map((t, i) => `${i + 1}. ${t}`).join('\n')}
     if (config.obj_saude) objecoes.push('"Tive um problema de saúde"');
     if (objecoes.length > 0) {
       secoes.push(`
-3. RESPOSTAS PARA OBJEÇÕES
-Para cada objeção abaixo, forneça uma resposta curta e empática para WhatsApp:
-${objecoes.map((o, i) => `${i + 1}. ${o}`).join('\n')}
+## 3. Respostas a Objecoes
+Para cada objecao abaixo, forneca uma resposta curta e empatica para WhatsApp:
+${objecoes.map((o, i) => `- ${i + 1}. ${o}`).join('\n')}
 `);
     }
   }
 
-  // Seção 4: Próximo passo
+  // Secao 4: Proximo passo
   if (config.section_proximo_passo) {
     secoes.push(`
-4. PRÓXIMO PASSO RECOMENDADO
-Indique a ação mais importante que o atendente deve tomar nas próximas 48h,
-considerando o perfil do aluno e os dias até a renovação.
+## 4. Proximo Passo
+Indique a acao mais importante que o atendente deve tomar nas proximas 48h,
+considerando o perfil do aluno e os dias ate a renovacao.
 `);
   }
 
-  // Seção 5: Gatilhos emocionais
+  // Secao 5: Gatilhos emocionais
   if (config.section_gatilhos) {
     secoes.push(`
-5. GATILHOS EMOCIONAIS
-Identifique 2-3 gatilhos emocionais específicos para este perfil
-(ex: medo de perder progresso, orgulho da conquista, pertencimento à comunidade).
-Explique como usar cada um na abordagem.
+## 5. Gatilhos
+Identifique 2-3 gatilhos emocionais especificos para este perfil
+(ex: medo de perder progresso, orgulho da conquista, pertencimento a comunidade).
+Explique rapidamente como usar cada gatilho na abordagem.
+`);
+  }
+
+  // Secao 6: Historico do contato
+  if (config.section_historico) {
+    secoes.push(`
+## 6. Historico do Contato
+- Liste os ultimos contatos relevantes e o que aprender com cada um.
+- Se nao houver historico, diga "Sem historico relevante" e proponha primeira abordagem.
+- Evite repetir mensagens ja usadas recentemente.
 `);
   }
 
@@ -104,14 +114,15 @@ ${contextoExtra}
 PERFIL DO ALUNO:
 ${JSON.stringify(perfil, null, 2)}
 
-Gere a estratégia com EXATAMENTE as seções numeradas abaixo (não adicione outras):
+Gere a estrategia em markdown com EXATAMENTE as secoes abaixo (na mesma ordem e sem criar secoes extras):
 ${secoes.join('\n')}
 
 Regras:
 - Linguagem brasileira casual (pode usar "tu" ou "você")
 - Use o nome do aluno naturalmente
 - Nunca pareça robótico ou cobrança automática
-- Adapte o tom à idade: jovem=mais informal, 40+=mais respeitoso mas leve`;
+- Adapte o tom à idade: jovem=mais informal, 40+=mais respeitoso mas leve
+- Comece obrigatoriamente por "## 1. Resumo do Perfil e Contexto de Renovacao"`;
 }
 
 export async function POST(request: NextRequest) {
