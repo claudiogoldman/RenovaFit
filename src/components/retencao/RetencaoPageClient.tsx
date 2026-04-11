@@ -304,6 +304,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null)
+  const [loadingHistoryItemId, setLoadingHistoryItemId] = useState<string | null>(null)
 
   // AI state
   const [output, setOutput] = useState<string | null>(null)
@@ -386,6 +387,43 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
       notes: aluno.notes || prev.notes,
     }))
     if (aluno.renewalDate) setRenewalDate(aluno.renewalDate)
+  }
+
+  function buildStrategyFromHistory(item: HistoricoContatoItem): string {
+    const sectionTitle = item.tipoContato === 'resposta' ? 'Respostas a Objecoes' : 'Mensagens Prontas'
+    const sectionLabel = item.tipoContato === 'resposta' ? 'Resposta aplicada' : 'Mensagem aplicada'
+    return [
+      '## 1. Resumo do Perfil',
+      `Contato carregado do historico em ${formatDateTime(item.createdAt)} (${item.canal}).`,
+      '',
+      `## 2. ${sectionTitle}`,
+      `**${sectionLabel}:**`,
+      item.mensagem,
+      '',
+      '## 4. Proximo Passo',
+      'Adaptar o texto conforme contexto atual do aluno e registrar novo contato.',
+    ].join('\n')
+  }
+
+  async function handleLoadFromHistory(item: HistoricoContatoItem) {
+    setLoadingHistoryItemId(item.id)
+    setError(null)
+    try {
+      const res = await authFetch(`/api/renewals/${item.renovacaoId}`)
+      const data = await res.json()
+      if (!res.ok || !data.success || !data.data) {
+        throw new Error(data.error || 'Nao foi possivel carregar os dados do aluno')
+      }
+
+      prefillFromAluno(data.data as RenewalItem)
+      setOutput(buildStrategyFromHistory(item))
+      setTab('perfil')
+      setFormCollapsed(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar item do historico')
+    } finally {
+      setLoadingHistoryItemId(null)
+    }
   }
 
   // Elapsed timer
@@ -850,6 +888,13 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                                 <p className="text-xs font-semibold text-slate-200">{item.alunoNome}</p>
                                 <div className="flex items-center gap-2">
                                   <p className="text-[11px] text-slate-400">{formatDateTime(item.createdAt)}</p>
+                                  <button
+                                    onClick={() => void handleLoadFromHistory(item)}
+                                    disabled={loadingHistoryItemId === item.id}
+                                    className="text-[11px] text-cyan-300 hover:text-cyan-200 border border-cyan-500/30 rounded px-1.5 py-0.5 disabled:opacity-50"
+                                  >
+                                    {loadingHistoryItemId === item.id ? 'Carregando...' : 'Carregar'}
+                                  </button>
                                   <button
                                     onClick={() => void handleDeleteHistory(item.id)}
                                     disabled={deletingHistoryId === item.id}
