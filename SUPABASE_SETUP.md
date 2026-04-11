@@ -89,6 +89,14 @@ create index if not exists historico_contatos_renovacao_id_idx on public.histori
 create index if not exists historico_contatos_created_at_idx on public.historico_contatos (created_at desc);
 ```
 
+## 2.1) Correcao do erro strategy_configs ausente
+
+Se aparecer o erro `Could not find the table 'public.strategy_configs' in the schema cache`, execute tambem o SQL da migration:
+
+- `supabase/migrations/20260411000001_strategy_configs_safe.sql`
+
+Essa migration cria a tabela `public.strategy_configs` (configuracao por usuario), indice unico por `profile_id` e politicas RLS.
+
 ## 3) Rotas
 
 - `GET /api/renewals`

@@ -3,6 +3,19 @@ import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/sup
 import type { StrategyConfig } from '@/lib/types/multitenancy';
 import { DEFAULT_STRATEGY_CONFIG } from '@/lib/types/multitenancy';
 
+function isMissingStrategyConfigTableError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+
+  const maybeError = error as { code?: string; message?: string };
+  const message = (maybeError.message ?? '').toLowerCase();
+
+  return (
+    maybeError.code === '42P01' ||
+    message.includes("could not find the table 'public.strategy_configs'") ||
+    message.includes('relation "public.strategy_configs" does not exist')
+  );
+}
+
 export async function GET() {
   try {
     const supabaseAuth = await createSupabaseServerClient();
@@ -21,6 +34,14 @@ export async function GET() {
       .select('*')
       .eq('profile_id', user.id)
       .single();
+
+    if (isMissingStrategyConfigTableError(error)) {
+      return NextResponse.json({
+        success: true,
+        data: { ...DEFAULT_STRATEGY_CONFIG, profile_id: user.id },
+        warning: 'Tabela strategy_configs nao encontrada. Aplicar migration do Supabase para persistir configuracoes.',
+      });
+    }
 
     if (error || !data) {
       // Return default config when no config saved yet
@@ -80,6 +101,15 @@ export async function POST(request: NextRequest) {
       .upsert(payload, { onConflict: 'profile_id' })
       .select('*')
       .single();
+
+    if (isMissingStrategyConfigTableError(error)) {
+      return NextResponse.json(
+        {
+          error: 'Tabela strategy_configs nao encontrada no Supabase. Rode a migration 20260411000001_strategy_configs_safe.sql.',
+        },
+        { status: 503 },
+      );
+    }
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
