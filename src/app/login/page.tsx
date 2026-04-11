@@ -19,8 +19,10 @@ export default function LoginPage() {
 
   const supabase = useMemo(() => {
     try {
-      return createSupabaseBrowserClient();
-    } catch {
+      const client = createSupabaseBrowserClient();
+      return client;
+    } catch (err) {
+      console.error('Erro ao criar cliente Supabase:', err);
       return null;
     }
   }, []);
@@ -43,7 +45,9 @@ export default function LoginPage() {
     event.preventDefault();
 
     if (!supabase) {
-      setError('Configuracao de autenticacao indisponivel.');
+      const errorMsg = 'Supabase não está configurado. Verifique as variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.';
+      setError(errorMsg);
+      console.error(errorMsg);
       return;
     }
 
@@ -53,14 +57,21 @@ export default function LoginPage() {
 
     try {
       if (mode === 'signin') {
+        console.log('Tentando fazer login com:', email);
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (signInError) throw signInError;
+        if (signInError) {
+          console.error('Erro de signin:', signInError);
+          throw signInError;
+        }
+        
+        console.log('Login bem-sucedido, redirecionando...');
         router.replace('/retencao');
       } else {
+        console.log('Tentando criar conta com:', email);
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -73,7 +84,12 @@ export default function LoginPage() {
           },
         });
 
-        if (signUpError) throw signUpError;
+        if (signUpError) {
+          console.error('Erro de signup:', signUpError);
+          throw signUpError;
+        }
+        
+        console.log('Conta criada com sucesso');
         setMessage('Conta criada com sucesso! Verifique seu email se solicitado. Você pode fazer login agora.');
         setEmail('');
         setPassword('');
@@ -82,7 +98,9 @@ export default function LoginPage() {
         setMode('signin');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro de autenticacao');
+      const errorMessage = err instanceof Error ? err.message : 'Erro de autenticacao';
+      console.error('Erro catchado:', errorMessage);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
