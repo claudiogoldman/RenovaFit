@@ -33,7 +33,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       telefone?: string;
       message?: string;
       tipoContato?: 'primeiro_contato' | 'followup' | 'resposta' | 'observacao';
+      canal?: 'whatsapp' | 'manual';
     };
+
+    const canal = body.canal ?? 'whatsapp';
 
     const supabase = createSupabaseAdminClient();
 
@@ -49,24 +52,48 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const renewal = renewalData as RenewalRow;
-    const telefone = normalizePhone((body.telefone || renewal.telefone || '').trim());
     const message = (body.message || buildDefaultMessage(renewal.name)).trim();
     const tipoContato = body.tipoContato || (renewal.last_contact ? 'followup' : 'primeiro_contato');
-
-    if (!isValidPhone(telefone)) {
-      return NextResponse.json({ error: 'Telefone invalido para este aluno' }, { status: 400 });
-    }
-
-    if (!message) {
-      return NextResponse.json({ error: 'Mensagem nao informada' }, { status: 400 });
-    }
-
-    const sentAtIso = new Date().toISOString();
     const ownerName =
       renewal.owner ||
       (user.user_metadata?.full_name as string | undefined) ||
       user.email ||
       'Atendente';
+
+    if (!message) {
+      return NextResponse.json({ error: 'Mensagem nao informada' }, { status: 400 });
+    }
+
+    // ── Canal manual: apenas registra histórico, sem envio WhatsApp ──
+    if (canal === 'manual') {
+      const sentAtIso = new Date().toISOString();
+      await registrarHistoricoContato(supabase, {
+        ownerId: user.id,
+        renovacaoId: id,
+        alunoNome: renewal.name,
+        canal: 'manual',
+        tipoContato,
+        telefone: '',
+        mensagem: message,
+        statusEnvio: 'enviado',
+        owner: ownerName,
+      });
+      await supabase
+        .from('renewal_items')
+        .update({ last_contact: sentAtIso })
+        .eq('id', id)
+        .eq('owner_id', user.id);
+      return NextResponse.json({ success: true, data: { sentAt: sentAtIso } });
+    }
+
+    // ── Canal WhatsApp ──
+    const telefone = normalizePhone((body.telefone || renewal.telefone || '').trim());
+
+    if (!isValidPhone(telefone)) {
+      return NextResponse.json({ error: 'Telefone invalido para este aluno' }, { status: 400 });
+    }
+
+    const sentAtIso = new Date().toISOString();
 
     try {
       const provider = await sendWhatsAppTextMessage({

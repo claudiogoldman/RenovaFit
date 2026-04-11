@@ -25,14 +25,15 @@
 Manter o fluxo Copilot + Codex sincronizado, com handoff claro e sem conflitos.
 
 ## Arquivos em edicao (lock)
-- **Copilot** (feat/app-nav-mobile):
-  - `src/components/layout/AppNav.tsx` (novo)
-  - `src/app/(app)/layout.tsx` (novo)
-  - `src/app/(app)/retencao/page.tsx` (movido)
-  - `src/app/(app)/conversao/page.tsx` (movido)
-  - `src/app/(app)/reativacao/page.tsx` (movido)
+- **Copilot** (feat/app-nav-mobile → PR #1):
+  - `src/components/layout/AppNav.tsx`
+  - `src/app/(app)/layout.tsx`
+  - `src/app/(app)/retencao|conversao|reativacao/page.tsx`
   - `src/components/retencao/RetencaoPageClient.tsx`
   - `src/app/admin/layout.tsx`
+- **Copilot** (feat/message-cards-contact):
+  - `src/app/api/renewals/[id]/contact/route.ts`
+  - `src/components/retencao/RetencaoPageClient.tsx`
 
 ## Checklist da tarefa atual
 - [x] Versionar template de rotina Codex/Copilot
