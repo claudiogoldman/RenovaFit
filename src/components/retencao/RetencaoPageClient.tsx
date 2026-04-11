@@ -310,6 +310,9 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null)
   const [loadingHistoryItemId, setLoadingHistoryItemId] = useState<string | null>(null)
+  const [clientResponse, setClientResponse] = useState('')
+  const [noClientResponse, setNoClientResponse] = useState(false)
+  const [savingClientResponse, setSavingClientResponse] = useState(false)
 
   // AI state
   const [output, setOutput] = useState<string | null>(null)
@@ -401,6 +404,49 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
       setHistoryError(err instanceof Error ? err.message : 'Nao foi possivel excluir este contato')
     } finally {
       setDeletingHistoryId(null)
+    }
+  }
+
+  async function handleRegisterClientResponse() {
+    if (!selectedAlunoId) {
+      setHistoryError('Selecione um aluno para registrar resposta no historico.')
+      return
+    }
+
+    const message = noClientResponse
+      ? 'Cliente nao respondeu a tentativa anterior.'
+      : clientResponse.trim()
+
+    if (!message) {
+      setHistoryError('Informe a resposta do cliente ou marque "Sem resposta".')
+      return
+    }
+
+    setSavingClientResponse(true)
+    setHistoryError(null)
+    try {
+      const res = await authFetch(`/api/renewals/${selectedAlunoId}/contact`, {
+        method: 'POST',
+        body: JSON.stringify({
+          message,
+          strategyId: selectedStrategyId,
+          canal: 'manual',
+          tipoContato: noClientResponse ? 'observacao' : 'resposta',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Nao foi possivel registrar resposta do cliente')
+      }
+
+      await loadHistory()
+      setBaseMessage(message)
+      setClientResponse('')
+      setNoClientResponse(false)
+    } catch (err) {
+      setHistoryError(err instanceof Error ? err.message : 'Nao foi possivel registrar resposta')
+    } finally {
+      setSavingClientResponse(false)
     }
   }
 
@@ -965,6 +1011,37 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                         </span>
                       </div>
 
+                      <div className="mb-3 rounded-lg border border-slate-700 bg-slate-950/60 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-300 mb-2">
+                          Resposta do cliente
+                        </p>
+                        <textarea
+                          value={clientResponse}
+                          onChange={(e) => setClientResponse(e.target.value)}
+                          disabled={noClientResponse}
+                          placeholder="Ex.: Cliente respondeu que só consegue voltar no mês que vem..."
+                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none disabled:opacity-60 resize-none"
+                          rows={2}
+                        />
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                          <label className="inline-flex items-center gap-2 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={noClientResponse}
+                              onChange={(e) => setNoClientResponse(e.target.checked)}
+                            />
+                            Sem resposta do cliente
+                          </label>
+                          <button
+                            onClick={() => void handleRegisterClientResponse()}
+                            disabled={savingClientResponse || !selectedAlunoId}
+                            className="rounded border border-cyan-500/30 px-2 py-1 text-xs text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-50"
+                          >
+                            {savingClientResponse ? 'Salvando...' : 'Registrar no historico'}
+                          </button>
+                        </div>
+                      </div>
+
                       {historyLoading ? (
                         <p className="text-sm text-slate-400">Carregando historico...</p>
                       ) : historyError ? (
@@ -989,6 +1066,15 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                                     className="text-[11px] text-cyan-300 hover:text-cyan-200 border border-cyan-500/30 rounded px-1.5 py-0.5 disabled:opacity-50"
                                   >
                                     {loadingHistoryItemId === item.id ? 'Carregando...' : 'Carregar'}
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setBaseMessage(item.mensagem)
+                                      setSelectedStrategyId(item.strategyId || null)
+                                    }}
+                                    className="text-[11px] text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 rounded px-1.5 py-0.5"
+                                  >
+                                    Usar como base
                                   </button>
                                   <button
                                     onClick={() => void handleDeleteHistory(item.id)}
