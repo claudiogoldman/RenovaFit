@@ -65,6 +65,7 @@ export type HistoricoContatoStatus = 'pendente' | 'enviado' | 'erro' | 'manual';
 export type HistoricoContatoItem = {
   id: string;
   renovacaoId: string;
+  strategyId?: string | null;
   alunoNome: string;
   canal: HistoricoContatoCanal;
   tipoContato: HistoricoContatoTipo;
@@ -74,4 +75,16 @@ export type HistoricoContatoItem = {
   erroDetalhe: string | null;
   createdAt: string;
   owner: string;
+};
+
+export type AlunoStrategySource = 'ia' | 'manual' | 'historico';
+
+export type AlunoStrategyItem = {
+  id: string;
+  renovacaoId: string;
+  alunoNome: string;
+  strategyText: string;
+  baseMessage: string;
+  source: AlunoStrategySource;
+  createdAt: string;
 };

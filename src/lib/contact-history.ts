@@ -12,6 +12,7 @@ type HistoricoContatoRow = {
   id: string;
   owner_id: string;
   renovacao_id: string;
+  strategy_id: string | null;
   aluno_nome: string;
   canal: HistoricoContatoCanal;
   tipo_contato: HistoricoContatoTipo;
@@ -26,6 +27,7 @@ type HistoricoContatoRow = {
 export type RegistrarHistoricoInput = {
   ownerId: string;
   renovacaoId: string;
+  strategyId?: string | null;
   alunoNome: string;
   canal: HistoricoContatoCanal;
   tipoContato: HistoricoContatoTipo;
@@ -40,6 +42,7 @@ export function mapHistoricoRowToItem(row: HistoricoContatoRow): HistoricoContat
   return {
     id: row.id,
     renovacaoId: row.renovacao_id,
+    strategyId: row.strategy_id,
     alunoNome: row.aluno_nome,
     canal: row.canal,
     tipoContato: row.tipo_contato,
@@ -59,6 +62,7 @@ export async function registrarHistoricoContato(
   const { error } = await supabase.from('historico_contatos').insert({
     owner_id: input.ownerId,
     renovacao_id: input.renovacaoId,
+    strategy_id: input.strategyId || null,
     aluno_nome: input.alunoNome,
     canal: input.canal,
     tipo_contato: input.tipoContato,
@@ -81,7 +85,7 @@ export async function carregarHistoricoContatos(
 ): Promise<HistoricoContatoItem[]> {
   const { data, error } = await supabase
     .from('historico_contatos')
-    .select('id,owner_id,renovacao_id,aluno_nome,canal,tipo_contato,telefone,mensagem,status_envio,erro_detalhe,owner,created_at')
+    .select('id,owner_id,renovacao_id,strategy_id,aluno_nome,canal,tipo_contato,telefone,mensagem,status_envio,erro_detalhe,owner,created_at')
     .eq('owner_id', ownerId)
     .order('created_at', { ascending: false })
     .limit(limit);

@@ -34,6 +34,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       message?: string;
       tipoContato?: 'primeiro_contato' | 'followup' | 'resposta' | 'observacao';
       canal?: 'whatsapp' | 'manual';
+      strategyId?: string;
     };
 
     const canal = body.canal ?? 'whatsapp';
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       await registrarHistoricoContato(supabase, {
         ownerId: user.id,
         renovacaoId: id,
+        strategyId: body.strategyId || null,
         alunoNome: renewal.name,
         canal: 'manual',
         tipoContato,
@@ -110,6 +112,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       await registrarHistoricoContato(supabase, {
         ownerId: user.id,
         renovacaoId: id,
+        strategyId: body.strategyId || null,
         alunoNome: renewal.name,
         canal: 'whatsapp',
         tipoContato,
@@ -132,6 +135,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       await registrarHistoricoContato(supabase, {
         ownerId: user.id,
         renovacaoId: id,
+        strategyId: body.strategyId || null,
         alunoNome: renewal.name,
         canal: 'whatsapp',
         tipoContato,

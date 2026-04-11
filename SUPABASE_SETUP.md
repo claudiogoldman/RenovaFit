@@ -108,6 +108,17 @@ Essa migration cria `public.integration_configs` com configuracao por usuario pa
 - Chaves de IA
 - Tokens/IDs do WhatsApp
 
+## 2.3) Estrategias por aluno (1:N) e vinculo com mensagens
+
+Para habilitar estrategias salvas por aluno e vinculacao da mensagem ao registro de estrategia, execute:
+
+- `supabase/migrations/20260411000003_aluno_strategies.sql`
+
+Essa migration:
+- Cria `public.aluno_strategies` (1 aluno pode ter varias estrategias)
+- Adiciona `strategy_id` em `public.historico_contatos`
+- Permite carregar a estrategia completa ao clicar na mensagem/historico
+
 ## 3) Rotas
 
 - `GET /api/renewals`
@@ -116,6 +127,9 @@ Essa migration cria `public.integration_configs` com configuracao por usuario pa
 - `DELETE /api/renewals/:id`
 - `GET /api/renewals/contact-history`
 - `POST /api/renewals/:id/contact`
+- `GET /api/renewals/:id/strategies`
+- `POST /api/renewals/:id/strategies`
+- `GET /api/renewals/strategies/:strategyId`
 
 As rotas exigem token de sessao do Supabase (Bearer) e isolam os dados por `owner_id`.
 
