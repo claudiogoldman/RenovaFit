@@ -6,13 +6,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-8">
-              <div className="flex items-center gap-3">
+          <div className="flex justify-between items-center min-h-16 py-2">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2 shrink-0">
                 <AppLogo size="sm" />
-                <h1 className="text-xl font-bold text-gray-900">Admin</h1>
+                <h1 className="text-lg font-bold text-gray-900 leading-none">Admin</h1>
               </div>
-              <div className="flex space-x-4">
+              <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                 <a
                   href="/admin"
                   className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"

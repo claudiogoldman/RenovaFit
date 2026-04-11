@@ -9,9 +9,9 @@ type AppLogoProps = {
 };
 
 const SIZE_MAP = {
-  sm: { width: 120, height: 36 },
-  md: { width: 160, height: 48 },
-  lg: { width: 220, height: 64 },
+  sm: { width: 96, height: 30 },
+  md: { width: 132, height: 42 },
+  lg: { width: 180, height: 56 },
 };
 
 export function AppLogo({ href = '/', size = 'md', className = '', priority = false }: AppLogoProps) {
@@ -19,17 +19,14 @@ export function AppLogo({ href = '/', size = 'md', className = '', priority = fa
 
   return (
     <Link href={href} className={`inline-flex items-center ${className}`.trim()} aria-label="RenovaFit">
-      <picture>
-        <source srcSet="/image/logo/logo-renovafit.webp" type="image/webp" />
-        <Image
-          src="/image/logo/logo-renovafit.png"
-          alt="RenovaFit"
-          width={width}
-          height={height}
-          priority={priority}
-          className="h-auto w-auto object-contain"
-        />
-      </picture>
+      <Image
+        src="/image/logo/logo-renovafit.png"
+        alt="RenovaFit"
+        width={width}
+        height={height}
+        priority={priority}
+        className="block max-w-full object-contain"
+      />
     </Link>
   );
 }
