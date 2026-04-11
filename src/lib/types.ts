@@ -79,12 +79,18 @@ export type HistoricoContatoItem = {
 
 export type AlunoStrategySource = 'ia' | 'manual' | 'historico';
 
+export type StrategyProfileSnapshot = {
+  student: StudentProfile;
+  renewalDate?: string;
+};
+
 export type AlunoStrategyItem = {
   id: string;
   renovacaoId: string;
   alunoNome: string;
   strategyText: string;
   baseMessage: string;
+  profileSnapshot?: StrategyProfileSnapshot | null;
   source: AlunoStrategySource;
   createdAt: string;
 };

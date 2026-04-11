@@ -6,7 +6,7 @@ import { AlunoSearch } from './AlunoSearch'
 import { StrategyConfigDrawer } from './StrategyConfigDrawer'
 import { StrategyConfigEditor, type StrategyConfigSaveState } from './StrategyConfigEditor'
 import { AIFormattedResponse } from '@/components/ai-formatted-response'
-import type { AlunoStrategyItem, HistoricoContatoItem, RenewalItem, StudentProfile } from '@/lib/types'
+import type { AlunoStrategyItem, HistoricoContatoItem, RenewalItem, StrategyProfileSnapshot, StudentProfile } from '@/lib/types'
 import type { StrategyConfig } from '@/lib/types/multitenancy'
 import { DEFAULT_STRATEGY_CONFIG } from '@/lib/types/multitenancy'
 
@@ -374,6 +374,10 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
           alunoNome: student.name,
           strategyText,
           baseMessage,
+          profileSnapshot: {
+            student,
+            renewalDate,
+          } satisfies StrategyProfileSnapshot,
           source,
         }),
       })
@@ -385,7 +389,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
     } catch {
       // silent - estrategia visual continua disponivel mesmo sem salvar
     }
-  }, [authFetch, baseMessage, loadStrategies, student.name])
+  }, [authFetch, baseMessage, loadStrategies, renewalDate, student])
 
   async function handleDeleteHistory(id: string) {
     const confirmed = window.confirm('Excluir este item do historico de contatos?')
@@ -483,6 +487,19 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
     if (aluno.renewalDate) setRenewalDate(aluno.renewalDate)
   }
 
+  function prefillFromStrategySnapshot(snapshot: AlunoStrategyItem['profileSnapshot']) {
+    if (!snapshot || typeof snapshot !== 'object') return
+    if (snapshot.student && typeof snapshot.student === 'object') {
+      setStudent((prev) => ({
+        ...prev,
+        ...snapshot.student,
+      }))
+    }
+    if (typeof snapshot.renewalDate === 'string') {
+      setRenewalDate(snapshot.renewalDate)
+    }
+  }
+
   function buildStrategyFromHistory(item: HistoricoContatoItem): string {
     const sectionTitle = item.tipoContato === 'resposta' ? 'Respostas a Objecoes' : 'Mensagens Prontas'
     const sectionLabel = item.tipoContato === 'resposta' ? 'Resposta aplicada' : 'Mensagem aplicada'
@@ -518,6 +535,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
           setOutput(String(strategyData.data.strategyText || ''))
           setBaseMessage(String(strategyData.data.baseMessage || item.mensagem || ''))
           setSelectedStrategyId(String(strategyData.data.id))
+          prefillFromStrategySnapshot(strategyData.data.profileSnapshot as AlunoStrategyItem['profileSnapshot'])
         } else {
           setOutput(buildStrategyFromHistory(item))
           setBaseMessage(item.mensagem)
@@ -1166,6 +1184,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                                       setOutput(strategy.strategyText)
                                       setBaseMessage(strategy.baseMessage || '')
                                       setSelectedStrategyId(strategy.id)
+                                      prefillFromStrategySnapshot(strategy.profileSnapshot)
                                       setFormCollapsed(false)
                                     }}
                                     className="text-[11px] text-cyan-300 hover:text-cyan-200 border border-cyan-500/30 rounded px-1.5 py-0.5"
