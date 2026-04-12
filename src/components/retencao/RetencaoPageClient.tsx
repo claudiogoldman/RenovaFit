@@ -25,6 +25,10 @@ type ParsedMessage = {
 
 /** Split a card block into the sendable message and the AI reasoning/explanation */
 function splitMessage(text: string): { message: string; reasoning: string | null } {
+  // If the block already went through the [MENSAGEM] parser, the text IS the message — no split needed
+  if (!text.includes('*') && !text.match(/\n\n?[\*\-]\s+\*\*/)) {
+    return { message: text.replace(/^[""\u201C\u201D]|[""\u201C\u201D]$/g, '').trim(), reasoning: null }
+  }
   // Find the first reasoning/explanation bullet: "* **Raciocínio:**" or "- **Como usar:**" etc.
   const splitRe = /\n\n?[\*\-]\s+\*\*/
   const idx = text.search(splitRe)
@@ -52,6 +56,20 @@ function buildWhatsAppWebLink(phone: string, message: string): string {
 }
 
 function parseMessagesFromSection(content: string): ParsedMessage[] {
+  // --- Primary: [MENSAGEM]...[/MENSAGEM] markers (new prompt format) ---
+  const markerRe = /\[MENSAGEM\]([\s\S]*?)\[\/MENSAGEM\]/gi
+  const markerMatches = [...content.matchAll(markerRe)]
+  if (markerMatches.length > 0) {
+    return markerMatches.map((m, i) => {
+      const before = content.slice(0, m.index)
+      const headerMatch = [...before.matchAll(/\*\*([^*]+)\*\*:?\s*$/gm)].pop()
+      const label = headerMatch ? headerMatch[1].trim() : `Mensagem ${i + 1}`
+      const text = m[1].replace(/^[""\u201C\u201D\s]+|[""\u201C\u201D\s]+$/g, '').trim()
+      return { id: `msg-${i}`, label, text }
+    })
+  }
+
+  // --- Fallback: bold headers (old responses) ---
   // Split on bold headers like **Mensagem 1:** or **1. Primeira abordagem:**
   const blockSplitRe = /(?=\*\*[^*]+\*\*:?\s*\n)/g
   const blocks = content.split(blockSplitRe).filter((b) => b.trim())
@@ -82,46 +100,57 @@ function parseMessagesFromSection(content: string): ParsedMessage[] {
 
 /**
  * Parse the Gatilhos section.
- * Format: "TitleName: description.\nComo usar: \"message\"" repeated per trigger.
- * Extracts the sendable message from "Como usar:" and puts the description as context.
+ * Primary format (new): **NomeDoGatilho:** desc\n[MENSAGEM] text [/MENSAGEM]
+ * Fallback (old): "Como usar: \"message\""
  */
 function parseGatilhosFromSection(content: string): ParsedMessage[] | null {
-  if (!content.toLowerCase().includes('como usar')) return null
+  // --- Primary: [MENSAGEM]...[/MENSAGEM] markers ---
+  const markerRe = /\[MENSAGEM\]([\s\S]*?)\[\/MENSAGEM\]/gi
+  const markerMatches = [...content.matchAll(markerRe)]
+  if (markerMatches.length > 0) {
+    // For each match, find the nearest **bold:** header before it as the label
+    const items: ParsedMessage[] = markerMatches.map((m, i) => {
+      const before = content.slice(0, m.index)
+      const headerMatch = [...before.matchAll(/\*\*([^*]+)\*\*:/g)].pop()
+      const label = headerMatch ? headerMatch[1].trim() : `Gatilho ${i + 1}`
+      // Description = text between the header and [MENSAGEM]
+      const descStart = headerMatch ? (headerMatch.index ?? 0) + headerMatch[0].length : 0
+      const descEnd = m.index ?? 0
+      const desc = before.slice(descStart, descEnd).trim()
+      const msgText = m[1].replace(/^["\u201C\u201D\s]+|["\u201C\u201D\s]+$/g, '').trim()
+      const text = desc ? `${msgText}\n\n* **Contexto:** ${desc}` : msgText
+      return { id: `gatilho-${i}`, label, text }
+    })
+    return items
+  }
 
+  // --- Fallback: "Como usar:" pattern (old responses) ---
+  if (!content.toLowerCase().includes('como usar')) return null
   const items: ParsedMessage[] = []
   let idx = 0
   let titleLabel = ''
   let descLines: string[] = []
-
   for (const line of content.split('\n')) {
     const trimmed = line.trim()
     if (!trimmed) continue
-
-    // Match "Como usar:" line (plain or bold markdown)
     const comoUsarRe = /^(?:[*\-]\s+)?(?:\*{1,2})?Como usar:?(?:\*{1,2})?\s*(.+)$/i
     const comoUsarMatch = trimmed.match(comoUsarRe)
     if (comoUsarMatch) {
-      const msgText = comoUsarMatch[1]
-        .replace(/^["\u201C\u201D\*]+|["\u201C\u201D\*]+$/g, '')
-        .trim()
+      const msgText = comoUsarMatch[1].replace(/^["\u201C\u201D\*]+|["\u201C\u201D\*]+$/g, '').trim()
       const desc = descLines.join(' ').trim()
-      const text = desc
-        ? `${msgText}\n\n* **Contexto:** ${desc}`
-        : msgText
+      const text = desc ? `${msgText}\n\n* **Contexto:** ${desc}` : msgText
       items.push({ id: `gatilho-${idx++}`, label: titleLabel || `Gatilho ${idx}`, text })
       titleLabel = ''
       descLines = []
     } else if (!titleLabel) {
-      // First line of a new block = title (everything before the first colon)
       const colonIdx = trimmed.indexOf(':')
-      titleLabel = colonIdx > 0 ? trimmed.slice(0, colonIdx).trim() : trimmed
+      titleLabel = colonIdx > 0 ? trimmed.slice(0, colonIdx).replace(/\*/g, '').trim() : trimmed
       const rest = colonIdx > 0 ? trimmed.slice(colonIdx + 1).trim() : ''
       if (rest) descLines.push(rest)
     } else {
       descLines.push(trimmed)
     }
   }
-
   return items.length > 0 ? items : null
 }
 
