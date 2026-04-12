@@ -45,7 +45,12 @@ ${urgencia ? `- ${urgencia}` : ''}
     if (tipos.length > 0) {
       secoes.push(`
 ## 2. Mensagens Prontas
-Gere as seguintes versoes para WhatsApp (max 5 linhas cada, linguagem brasileira casual):
+Gere as seguintes versoes para WhatsApp (max 5 linhas cada, linguagem brasileira casual).
+Para CADA versao use EXATAMENTE este formato:
+
+**NomeDaVersao:**
+[MENSAGEM] Texto da mensagem aqui. [/MENSAGEM]
+
 ${tipos.map((t, i) => `- ${i + 1}. ${t}`).join('\n')}
 `);
     }
@@ -62,7 +67,12 @@ ${tipos.map((t, i) => `- ${i + 1}. ${t}`).join('\n')}
     if (objecoes.length > 0) {
       secoes.push(`
 ## 3. Respostas a Objecoes
-Para cada objecao abaixo, forneca uma resposta curta e empatica para WhatsApp:
+Para cada objecao abaixo, forneca uma resposta curta e empatica para WhatsApp.
+Para CADA objecao use EXATAMENTE este formato:
+
+**NomeDaObjecao:**
+[MENSAGEM] Texto da resposta aqui. [/MENSAGEM]
+
 ${objecoes.map((o, i) => `- ${i + 1}. ${o}`).join('\n')}
 `);
     }
@@ -81,9 +91,13 @@ considerando o perfil do aluno e os dias ate a renovacao.
   if (config.section_gatilhos) {
     secoes.push(`
 ## 5. Gatilhos
-Identifique 2-3 gatilhos emocionais especificos para este perfil
-(ex: medo de perder progresso, orgulho da conquista, pertencimento a comunidade).
-Explique rapidamente como usar cada gatilho na abordagem.
+Identifique 2-3 gatilhos emocionais especificos para este perfil.
+Para CADA gatilho use EXATAMENTE este formato (nao invente outro formato):
+
+**NomeDoGatilho:** Explicacao breve de por que funciona para este aluno.
+[MENSAGEM] Texto da mensagem pronta para WhatsApp, usando o nome do aluno. [/MENSAGEM]
+
+Repita o bloco acima para cada gatilho.
 `);
   }
 
