@@ -113,13 +113,31 @@ export default async function Home() {
           </Link>
         </div>
 
-        <div className="mt-6 flex justify-center">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Análise de Interações */}
+          <Link
+            href="/analise"
+            className="group relative p-8 rounded-2xl border border-violet-400/20 bg-gradient-to-br from-slate-900 to-slate-800 hover:border-violet-400/50 transition-all duration-300"
+          >
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-400/10 to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative z-10">
+              <h2 className="text-2xl font-bold mb-2 text-violet-400">🔍 Análise de Interações</h2>
+              <p className="text-slate-400 mb-4">
+                IA avalia a qualidade das suas interações com alunos, identifica padrões e gera script de vendas
+              </p>
+              <div className="text-sm text-violet-300 font-semibold">
+                Acessar App →
+              </div>
+            </div>
+          </Link>
+
+          {/* Como usar */}
           <Link
             href="/como-usar"
-            className="group relative p-8 rounded-2xl border border-slate-600/50 bg-gradient-to-br from-slate-800 to-slate-900 hover:border-slate-400/50 transition-all duration-300 max-w-xl"
+            className="group relative p-8 rounded-2xl border border-slate-600/50 bg-gradient-to-br from-slate-800 to-slate-900 hover:border-slate-400/50 transition-all duration-300"
           >
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-600/10 to-slate-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="relative z-10 text-center">
+            <div className="relative z-10">
               <h2 className="text-2xl font-bold mb-2 text-slate-200">📖 Como usar</h2>
               <p className="text-slate-400">
                 Guia completo: jornada do sistema do primeiro acesso até a renovação do aluno

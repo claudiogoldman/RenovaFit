@@ -23,6 +23,21 @@ type ParsedMessage = {
   text: string
 }
 
+/** Strip AI reasoning/explanation — returns only the sendable message text */
+function extractMsgText(text: string): string {
+  // Remove everything from the first reasoning/explanation bullet onwards
+  // Patterns: "\n\n* **Raciocínio:**" or "\n\n- **" or "\n\n* **"
+  const stripped = text.replace(/\n\n?[\*\-]\s+\*\*[\s\S]*/g, '').trim()
+  // Remove surrounding quotes (straight or curly)
+  return stripped.replace(/^[""\u201C\u201D]|[""\u201C\u201D]$/g, '').trim() || text.trim()
+}
+
+/** Build a WhatsApp Web deep-link with pre-filled phone and message */
+function buildWhatsAppWebLink(phone: string, message: string): string {
+  const cleaned = phone.replace(/\D/g, '')
+  return `https://api.whatsapp.com/send?phone=${cleaned}&text=${encodeURIComponent(message)}`
+}
+
 function parseMessagesFromSection(content: string): ParsedMessage[] {
   // Split on bold headers like **Mensagem 1:** or **1. Primeira abordagem:**
   const blockSplitRe = /(?=\*\*[^*]+\*\*:?\s*\n)/g
@@ -263,6 +278,8 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null)
   const [sendingMsgId, setSendingMsgId] = useState<string | null>(null)
   const [sentMsgIds, setSentMsgIds] = useState<Set<string>>(new Set())
+  const [copiedStrategy, setCopiedStrategy] = useState(false)
+  const [alunoTelefone, setAlunoTelefone] = useState('')
 
   async function handleMessageAction(
     msgId: string,
@@ -478,6 +495,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
 
   function prefillFromAluno(aluno: RenewalItem) {
     setSelectedAlunoId(aluno.id)
+    if (aluno.telefone) setAlunoTelefone(aluno.telefone)
     setStudent((prev) => ({
       ...prev,
       name: aluno.name,
@@ -991,7 +1009,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                                                 </p>
                                                 <div className="flex gap-2 flex-wrap">
                                                   <button
-                                                    onClick={() => void handleMessageAction(messageId, msg.text, 'copy')}
+                                                    onClick={() => void handleMessageAction(messageId, extractMsgText(msg.text), 'copy')}
                                                     className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
                                                       copiedMsgId === messageId
                                                         ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
@@ -1000,6 +1018,16 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                                                   >
                                                     {copiedMsgId === messageId ? '✓ Copiado' : '📋 Copiar'}
                                                   </button>
+                                                  {(isMensagens || isObjecoes) && (
+                                                    <a
+                                                      href={buildWhatsAppWebLink(alunoTelefone, extractMsgText(msg.text))}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-colors"
+                                                    >
+                                                      💬 WhatsApp Web
+                                                    </a>
+                                                  )}
                                                   {isMensagens && whatsappConfigured && selectedAlunoId && (
                                                     <button
                                                       onClick={() => void handleMessageAction(messageId, msg.text, 'whatsapp')}
@@ -1037,12 +1065,32 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                           </div>
                         )}
 
-                        <button
-                          onClick={() => void navigator.clipboard.writeText(output)}
-                          className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-300 hover:bg-emerald-400/20 transition"
-                        >
-                          📋 Copiar Estratégia
-                        </button>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <label className="flex items-center gap-2 text-xs text-slate-400">
+                            <span className="shrink-0">📱 Telefone:</span>
+                            <input
+                              type="tel"
+                              value={alunoTelefone}
+                              onChange={(e) => setAlunoTelefone(e.target.value)}
+                              placeholder="5511999999999"
+                              className="w-44 rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-200 placeholder-slate-500 focus:border-emerald-400/50 focus:outline-none"
+                            />
+                          </label>
+                          <button
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(output)
+                              setCopiedStrategy(true)
+                              setTimeout(() => setCopiedStrategy(false), 2000)
+                            }}
+                            className={`rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                              copiedStrategy
+                                ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
+                                : 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20'
+                            }`}
+                          >
+                            {copiedStrategy ? '✓ Estratégia Copiada' : '📋 Copiar Estratégia'}
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex items-center justify-center rounded-lg border border-dashed border-slate-600 p-12 text-slate-400 text-center">
