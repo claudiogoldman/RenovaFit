@@ -80,6 +80,51 @@ function parseMessagesFromSection(content: string): ParsedMessage[] {
   return [{ id: 'msg-0', label: 'Mensagem', text: content.trim() }]
 }
 
+/**
+ * Parse the Gatilhos section.
+ * Format: "TitleName: description.\nComo usar: \"message\"" repeated per trigger.
+ * Extracts the sendable message from "Como usar:" and puts the description as context.
+ */
+function parseGatilhosFromSection(content: string): ParsedMessage[] | null {
+  if (!content.toLowerCase().includes('como usar')) return null
+
+  const items: ParsedMessage[] = []
+  let idx = 0
+  let titleLabel = ''
+  let descLines: string[] = []
+
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+
+    // Match "Como usar:" line (plain or bold markdown)
+    const comoUsarRe = /^(?:[*\-]\s+)?(?:\*{1,2})?Como usar:?(?:\*{1,2})?\s*(.+)$/i
+    const comoUsarMatch = trimmed.match(comoUsarRe)
+    if (comoUsarMatch) {
+      const msgText = comoUsarMatch[1]
+        .replace(/^["\u201C\u201D\*]+|["\u201C\u201D\*]+$/g, '')
+        .trim()
+      const desc = descLines.join(' ').trim()
+      const text = desc
+        ? `${msgText}\n\n* **Contexto:** ${desc}`
+        : msgText
+      items.push({ id: `gatilho-${idx++}`, label: titleLabel || `Gatilho ${idx}`, text })
+      titleLabel = ''
+      descLines = []
+    } else if (!titleLabel) {
+      // First line of a new block = title (everything before the first colon)
+      const colonIdx = trimmed.indexOf(':')
+      titleLabel = colonIdx > 0 ? trimmed.slice(0, colonIdx).trim() : trimmed
+      const rest = colonIdx > 0 ? trimmed.slice(colonIdx + 1).trim() : ''
+      if (rest) descLines.push(rest)
+    } else {
+      descLines.push(trimmed)
+    }
+  }
+
+  return items.length > 0 ? items : null
+}
+
 function daysUntil(dateStr: string): number | null {
   if (!dateStr) return null
   const today = new Date()
@@ -989,9 +1034,12 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                             {strategySections.map((section) => {
                               const isMensagens = section.title === 'Mensagens Prontas'
                               const isObjecoes = section.title === 'Respostas a Objecoes'
-                              const hasMessageCards = isMensagens || isObjecoes
+                              const isGatilhos = section.title === 'Gatilhos'
+                              const hasMessageCards = isMensagens || isObjecoes || isGatilhos
                               const messages = hasMessageCards
-                                ? parseMessagesFromSection(section.content)
+                                ? (isGatilhos
+                                    ? (parseGatilhosFromSection(section.content) ?? parseMessagesFromSection(section.content))
+                                    : parseMessagesFromSection(section.content))
                                 : null
                               const isExpanded = !!expandedStrategySections[section.title]
                               return (
@@ -1073,7 +1121,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                                                   >
                                                     {copiedMsgId === messageId ? '✓ Copiado' : '📋 Copiar'}
                                                   </button>
-                                                  {(isMensagens || isObjecoes) && (
+                                                  {(isMensagens || isObjecoes || isGatilhos) && (
                                                     <a
                                                       href={buildWhatsAppWebLink(alunoTelefone, extractMsgText(msg.text))}
                                                       target="_blank"
