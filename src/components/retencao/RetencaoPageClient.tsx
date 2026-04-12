@@ -23,13 +23,26 @@ type ParsedMessage = {
   text: string
 }
 
+/** Split a card block into the sendable message and the AI reasoning/explanation */
+function splitMessage(text: string): { message: string; reasoning: string | null } {
+  // Find the first reasoning/explanation bullet: "* **Raciocínio:**" or "- **Como usar:**" etc.
+  const splitRe = /\n\n?[\*\-]\s+\*\*/
+  const idx = text.search(splitRe)
+  if (idx === -1) {
+    const clean = text.replace(/^[""\u201C\u201D]|[""\u201C\u201D]$/g, '').trim()
+    return { message: clean, reasoning: null }
+  }
+  const message = text
+    .slice(0, idx)
+    .replace(/^[""\u201C\u201D]|[""\u201C\u201D]$/g, '')
+    .trim()
+  const reasoning = text.slice(idx).trim()
+  return { message, reasoning }
+}
+
 /** Strip AI reasoning/explanation — returns only the sendable message text */
 function extractMsgText(text: string): string {
-  // Remove everything from the first reasoning/explanation bullet onwards
-  // Patterns: "\n\n* **Raciocínio:**" or "\n\n- **" or "\n\n* **"
-  const stripped = text.replace(/\n\n?[\*\-]\s+\*\*[\s\S]*/g, '').trim()
-  // Remove surrounding quotes (straight or curly)
-  return stripped.replace(/^[""\u201C\u201D]|[""\u201C\u201D]$/g, '').trim() || text.trim()
+  return splitMessage(text).message || text.trim()
 }
 
 /** Build a WhatsApp Web deep-link with pre-filled phone and message */
@@ -280,6 +293,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
   const [sentMsgIds, setSentMsgIds] = useState<Set<string>>(new Set())
   const [copiedStrategy, setCopiedStrategy] = useState(false)
   const [alunoTelefone, setAlunoTelefone] = useState('')
+  const [expandedReasoning, setExpandedReasoning] = useState<Record<string, boolean>>({})
 
   async function handleMessageAction(
     msgId: string,
@@ -624,7 +638,7 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
           method: 'POST',
           body: JSON.stringify({
             name: student.name,
-            telefone: '',
+            telefone: alunoTelefone,
             plan: student.selectedPlan || 'Anual',
             status: 'ativo',
             renewalDate,
@@ -754,6 +768,18 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                           value={student.name}
                           onChange={(e) => setStudent((p) => ({ ...p, name: e.target.value }))}
                           placeholder="Ex.: Mariana"
+                          className="rounded-lg border border-emerald-400/20 bg-slate-900 px-3 py-2 text-white focus:border-emerald-400 focus:outline-none"
+                        />
+                      </label>
+
+                      {/* Phone */}
+                      <label className="flex flex-col gap-1.5 text-sm text-slate-200">
+                        Telefone (WhatsApp)
+                        <input
+                          type="tel"
+                          value={alunoTelefone}
+                          onChange={(e) => setAlunoTelefone(e.target.value)}
+                          placeholder="5511999999999"
                           className="rounded-lg border border-emerald-400/20 bg-slate-900 px-3 py-2 text-white focus:border-emerald-400 focus:outline-none"
                         />
                       </label>
@@ -996,6 +1022,8 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                                         <div className="space-y-3">
                                           {messages.map((msg) => {
                                             const messageId = `${section.title}-${msg.id}`
+                                            const { message: msgClean, reasoning } = splitMessage(msg.text)
+                                            const reasoningExpanded = !!expandedReasoning[messageId]
                                             return (
                                               <div
                                                 key={messageId}
@@ -1004,9 +1032,36 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                                                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
                                                   {msg.label}
                                                 </p>
-                                                <p className="text-sm text-slate-200 whitespace-pre-wrap mb-3">
-                                                  {msg.text}
-                                                </p>
+                                                {/* Sendable message — highlighted */}
+                                                <div className="rounded-md border border-emerald-400/20 bg-emerald-950/30 px-3 py-2.5 mb-3">
+                                                  <p className="text-sm text-slate-100 whitespace-pre-wrap">
+                                                    {msgClean}
+                                                  </p>
+                                                </div>
+                                                {/* AI reasoning — collapsible */}
+                                                {reasoning && (
+                                                  <div className="mb-3">
+                                                    <button
+                                                      onClick={() =>
+                                                        setExpandedReasoning((prev) => ({
+                                                          ...prev,
+                                                          [messageId]: !reasoningExpanded,
+                                                        }))
+                                                      }
+                                                      className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-300 transition-colors"
+                                                    >
+                                                      <span>{reasoningExpanded ? '▾' : '▸'}</span>
+                                                      Ver explicação da IA
+                                                    </button>
+                                                    {reasoningExpanded && (
+                                                      <div className="mt-1.5 rounded-md border border-slate-700/50 bg-slate-900/40 px-3 py-2">
+                                                        <p className="text-xs text-slate-400 whitespace-pre-wrap">
+                                                          {reasoning.replace(/^\n+/, '')}
+                                                        </p>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                )}
                                                 <div className="flex gap-2 flex-wrap">
                                                   <button
                                                     onClick={() => void handleMessageAction(messageId, extractMsgText(msg.text), 'copy')}
@@ -1066,16 +1121,6 @@ export function RetencaoPageClient({ initialAlunoId }: { initialAlunoId?: string
                         )}
 
                         <div className="flex flex-wrap items-center gap-3">
-                          <label className="flex items-center gap-2 text-xs text-slate-400">
-                            <span className="shrink-0">📱 Telefone:</span>
-                            <input
-                              type="tel"
-                              value={alunoTelefone}
-                              onChange={(e) => setAlunoTelefone(e.target.value)}
-                              placeholder="5511999999999"
-                              className="w-44 rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-200 placeholder-slate-500 focus:border-emerald-400/50 focus:outline-none"
-                            />
-                          </label>
                           <button
                             onClick={async () => {
                               await navigator.clipboard.writeText(output)
