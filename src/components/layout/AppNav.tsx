@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: '/conversao', label: 'Conversão', activeColor: 'text-cyan-400', icon: '🎯' },
   { href: '/retencao', label: 'Retenção', activeColor: 'text-emerald-400', icon: '💚' },
   { href: '/reativacao', label: 'Reativação', activeColor: 'text-purple-400', icon: '🔄' },
+  { href: '/analise', label: 'Análise', activeColor: 'text-violet-400', icon: '🔍' },
 ]
 
 export function AppNav() {
