@@ -25,28 +25,41 @@ type ParsedMessage = {
 
 /** Split a card block into the sendable message and the AI reasoning/explanation */
 function splitMessage(text: string): { message: string; reasoning: string | null } {
-  // If the block already went through the [MENSAGEM] parser, the text IS the message — no split needed
-  if (!text.includes('*') && !text.match(/\n\n?[\*\-]\s+\*\*/)) {
-    return { message: text.replace(/^[""\u201C\u201D]|[""\u201C\u201D]$/g, '').trim(), reasoning: null }
+  // Primary: [MENSAGEM]...[/MENSAGEM] markers — extract message and treat rest as reasoning
+  const markerMatch = text.match(/\[MENSAGEM\]([\s\S]*?)\[\/MENSAGEM\]/i)
+  if (markerMatch) {
+    const msg = markerMatch[1]
+      .replace(/^[""\u201C\u201D\s]+|[""\u201C\u201D\s]+$/g, '')
+      .trim()
+    const afterIdx = (markerMatch.index ?? 0) + markerMatch[0].length
+    const rest = text.slice(afterIdx).trim()
+    return { message: msg, reasoning: rest || null }
   }
+
+  // Strip any orphaned [MENSAGEM] / [/MENSAGEM] tags before further processing
+  const cleaned = text.replace(/\[\/?\s*MENSAGEM\s*\]/gi, '').trim()
+
   // Find the first reasoning/explanation bullet: "* **Raciocínio:**" or "- **Como usar:**" etc.
   const splitRe = /\n\n?[\*\-]\s+\*\*/
-  const idx = text.search(splitRe)
+  const idx = cleaned.search(splitRe)
   if (idx === -1) {
-    const clean = text.replace(/^[""\u201C\u201D]|[""\u201C\u201D]$/g, '').trim()
-    return { message: clean, reasoning: null }
+    return {
+      message: cleaned.replace(/^[""\u201C\u201D]|[""\u201C\u201D]$/g, '').trim(),
+      reasoning: null,
+    }
   }
-  const message = text
+  const message = cleaned
     .slice(0, idx)
     .replace(/^[""\u201C\u201D]|[""\u201C\u201D]$/g, '')
     .trim()
-  const reasoning = text.slice(idx).trim()
+  const reasoning = cleaned.slice(idx).trim()
   return { message, reasoning }
 }
 
 /** Strip AI reasoning/explanation — returns only the sendable message text */
 function extractMsgText(text: string): string {
-  return splitMessage(text).message || text.trim()
+  const { message } = splitMessage(text)
+  return message || text.replace(/\[\/?\s*MENSAGEM\s*\]/gi, '').trim()
 }
 
 /** Build a WhatsApp Web deep-link with pre-filled phone and message */
@@ -94,8 +107,9 @@ function parseMessagesFromSection(content: string): ParsedMessage[] {
     })
   }
 
-  // Single message — return whole content as one card
-  return [{ id: 'msg-0', label: 'Mensagem', text: content.trim() }]
+  // Single message — return whole content as one card (strip any leftover markers)
+  const singleText = content.replace(/\[\/?\s*MENSAGEM\s*\]/gi, '').trim()
+  return [{ id: 'msg-0', label: 'Mensagem', text: singleText }]
 }
 
 /**
